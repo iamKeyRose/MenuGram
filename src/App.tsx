@@ -25,6 +25,9 @@ function App() {
         return <Search />;
       case 'orders': 
         return <Orders />;
+           case 'owner-reg': 
+  return <OwnerRegistration dbUser={dbUser} onComplete={() => setActiveTab('profile')} />;
+
       case 'profile': 
   return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
  // UPDATED: Now passes dbUser to the Profile page
