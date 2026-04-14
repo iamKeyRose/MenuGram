@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTelegram } from '../hooks/useTelegram';
-import { LayoutDashboard, ArrowRight, Store, User, Megaphone, Wallet } from 'lucide-react';
+// ADDED 'Settings' to the import list below
+import { LayoutDashboard, ArrowRight, Store, User, Megaphone, Settings } from 'lucide-react';
 
 export const Profile = ({ dbUser, setActiveTab }: { dbUser: any, setActiveTab?: (tab: string) => void }) => {
   const { user } = useTelegram();
   const [wallet, setWallet] = useState<any>(null);
+
+  // SAFETY CHECK: If dbUser is still loading from useAuth, prevent the crash
+  if (!dbUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-slate-400 font-black animate-pulse uppercase text-xs tracking-widest">
+          Loading Profile...
+        </div>
+      </div>
+    );
+  }
 
   const isOwner = dbUser?.role === 'owner';
 
@@ -76,7 +88,7 @@ export const Profile = ({ dbUser, setActiveTab }: { dbUser: any, setActiveTab?: 
             <User size={16} />
             <span className="font-bold text-sm">Name</span>
           </div>
-          <span className="font-black text-sm">{user?.first_name || 'Guest'}</span>
+          <span className="font-black text-sm">{user?.first_name || dbUser?.display_name || 'Guest'}</span>
         </div>
         <div className="p-5 flex justify-between items-center">
           <div className="flex items-center gap-3 text-slate-500">
