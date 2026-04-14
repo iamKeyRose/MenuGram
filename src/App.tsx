@@ -1,14 +1,21 @@
 import { useState } from 'react';
 import { Home } from './pages/home';
-import { Search } from './pages/search'; // Added this
+import { Search } from './pages/search'; 
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
-import { BottomNav } from './components/bottomNav'; // Matching your lowercase naming
+import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
+import { useAuth } from './hooks/useAuth'; // ADDED: New hook for database sync
 
 function App() {
+  const { dbUser, loading } = useAuth(); // ADDED: Gets user data from your app_users table
   const [activeTab, setActiveTab] = useState('home');
   const { user } = useTelegram();
+
+  // ADDED: Simple check to ensure we have the user role before showing the profile
+  if (loading) {
+    return <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center">Loading...</div>;
+  }
 
   const renderPage = () => {
     switch (activeTab) {
@@ -19,7 +26,7 @@ function App() {
       case 'orders': 
         return <Orders />;
       case 'profile': 
-        return <Profile />;
+        return <Profile user={dbUser} />; // UPDATED: Now passes dbUser to the Profile page
       case 'favorites': 
         return <div className="p-10 text-center font-bold text-gray-400">Favorites Coming Soon...</div>;
       default: 
@@ -39,4 +46,3 @@ function App() {
 }
 
 export default App;
-    
