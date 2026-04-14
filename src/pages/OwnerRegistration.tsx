@@ -41,8 +41,8 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
     if (resError) {
       alert("Error: " + resError.message);
     } else {
-      // 2. Only upgrade role to 'owner' if they are currently a 'customer'
-      if (dbUser.role === 'customer') {
+      // ADDED: Logic to upgrade role if user is currently a 'customer' OR 'promoter'
+      if (dbUser.role === 'customer' || dbUser.role === 'promoter') {
         await supabase
           .from('app_users')
           .update({ role: 'owner' })
