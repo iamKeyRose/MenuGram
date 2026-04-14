@@ -3,7 +3,8 @@ import { Home } from './pages/home';
 import { Search } from './pages/search'; 
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
-import { OwnerRegistration } from './pages/OwnerRegistration'; // ADDED: Must import to prevent blank screen
+import { OwnerRegistration } from './pages/OwnerRegistration';
+import { MenuSetup } from './pages/MenuSetup'; // NEW IMPORT
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
@@ -11,6 +12,7 @@ import { useAuth } from './hooks/useAuth';
 function App() {
   const { dbUser, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('home');
+  const [newResId, setNewResId] = useState<string | null>(null); // NEW STATE
   const { user } = useTelegram();
 
   if (loading) {
@@ -26,7 +28,12 @@ function App() {
       case 'orders': 
         return <Orders />;
       case 'owner-reg': 
-        return <OwnerRegistration dbUser={dbUser} onComplete={() => setActiveTab('profile')} />;
+        return <OwnerRegistration dbUser={dbUser} onComplete={(id: string) => { 
+          setNewResId(id); 
+          setActiveTab('menu-setup'); // Redirect to menu build
+        }} />;
+      case 'menu-setup': // NEW CASE
+        return <MenuSetup restaurantId={newResId!} onFinish={() => window.location.reload()} />;
       case 'profile': 
         return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
       case 'favorites': 
@@ -41,7 +48,6 @@ function App() {
       <main className="pb-32">
         {renderPage()}
       </main>
-
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
