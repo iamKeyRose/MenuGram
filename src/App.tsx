@@ -33,7 +33,7 @@ function App() {
           setActiveTab('menu-setup'); // Redirect to menu build
         }} />;
       case 'menu-setup': // NEW CASE
-        return <MenuSetup restaurantId={newResId!} onFinish={() => window.location.reload()} />;
+        return <OwnerRegistration restaurantId={newResId!} onFinish={() => window.location.reload()} />;
       case 'profile': 
         return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
       case 'favorites': 
