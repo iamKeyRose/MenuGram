@@ -26,7 +26,8 @@ function App() {
       case 'orders': 
         return <Orders />;
       case 'profile': 
-        return <Profile user={dbUser} />; // UPDATED: Now passes dbUser to the Profile page
+  return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
+ // UPDATED: Now passes dbUser to the Profile page
       case 'favorites': 
         return <div className="p-10 text-center font-bold text-gray-400">Favorites Coming Soon...</div>;
       default: 
