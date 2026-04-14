@@ -3,7 +3,7 @@ import { Home } from './pages/home';
 import { Search } from './pages/search'; 
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
-import { OwnerRegistration } from './pages/ownerRegistration'; // ADDED: Must import to prevent blank screen
+import { OwnerRegistration } from './pages/OwnerRegistration'; // ADDED: Must import to prevent blank screen
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
