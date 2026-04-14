@@ -1,48 +1,59 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTelegram } from '../hooks/useTelegram';
 
 export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onComplete: () => void }) => {
+  const { user } = useTelegram(); // Kept original dependency
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState('');
-  const [city, setCity] = useState('');
-  const [phone, setPhone] = useState('');
   const [count, setCount] = useState(0);
+
+  // Focus only on columns that are NOT data-driven
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    city: '',
+    address: '',
+    phone: '',
+    whatsapp: '',
+  });
 
   useEffect(() => {
     const checkLimit = async () => {
-      // We check based on auth_id as per your schema
-      const { count } = await supabase
+      if (!dbUser?.auth_id) return;
+      const { count: resCount } = await supabase
         .from('restaurants')
         .select('*', { count: 'exact', head: true })
         .eq('owner_id', dbUser.auth_id);
-      setCount(count || 0);
+      setCount(resCount || 0);
     };
     checkLimit();
   }, [dbUser.auth_id]);
 
   const handleRegister = async () => {
-    if (count >= 10) return alert("You've reached the maximum limit of 10 restaurants.");
-    if (!name || !city || !phone) return alert("Please fill in the Name, City, and Phone.");
+    if (count >= 10) return alert("Maximum limit of 10 restaurants reached.");
+    if (!formData.name.trim()) return alert("Restaurant Name is required.");
 
     setLoading(true);
 
-    // 1. Insert the Restaurant using the auth_id from your schema
+    // Only insert columns that require manual input
+    // The DB handles id, created_at, rating, is_open, etc. automatically
     const { error: resError } = await supabase
       .from('restaurants')
       .insert([{ 
-        name, 
-        city, 
-        phone,
-        owner_id: dbUser.auth_id, 
-        is_open: true,
-        subscription_tier: 'basic'
+        owner_id: dbUser.auth_id,
+        name: formData.name,
+        description: formData.description,
+        city: formData.city,
+        address: formData.address,
+        phone: formData.phone,
+        whatsapp: formData.whatsapp
       }]);
 
     if (resError) {
       alert("Error: " + resError.message);
     } else {
-      // ADDED: Logic to upgrade role if user is currently a 'customer' OR 'promoter'
-      if (dbUser.role === 'customer' || dbUser.role === 'promoter') {
+      // Upgrade role from Customer/Promoter to Owner
+      if (dbUser.role !== 'owner') {
         await supabase
           .from('app_users')
           .update({ role: 'owner' })
@@ -50,34 +61,95 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
       }
       
       alert("Registration Successful!");
-      onComplete();
+      onComplete(); 
       window.location.reload(); 
     }
     setLoading(false);
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-3xl font-black tracking-tighter mb-2">Register Restaurant</h2>
-      <p className="text-slate-400 text-sm font-bold mb-8 italic">{count}/10 Locations registered</p>
+    <div className="p-6 pb-24 max-w-md mx-auto">
+      <header className="mb-8">
+        <h2 className="text-3xl font-black tracking-tighter">Register</h2>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">
+          Location {count + 1} of 10
+        </p>
+      </header>
 
       <div className="space-y-4">
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Restaurant Name" className="w-full p-5 bg-transparent font-black outline-none" />
+        {/* Name - Database 'NOT NULL' */}
+        <div className="space-y-1">
+          <label className="px-5 text-[10px] font-black uppercase text-blue-600">Name *</label>
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <input 
+              className="w-full p-4 bg-transparent font-black outline-none text-sm"
+              placeholder="Restaurant Name"
+              onChange={e => setFormData({...formData, name: e.target.value})}
+            />
+          </div>
         </div>
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-2">
-          <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="w-full p-5 bg-transparent font-black outline-none" />
+
+        {/* Description - Optional */}
+        <div className="space-y-1">
+          <label className="px-5 text-[10px] font-black uppercase text-slate-400">Bio</label>
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <textarea 
+              className="w-full p-4 bg-transparent font-bold outline-none text-sm h-20"
+              placeholder="Brief description..."
+              onChange={e => setFormData({...formData, description: e.target.value})}
+            />
+          </div>
         </div>
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-2">
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Business Phone" className="w-full p-5 bg-transparent font-black outline-none" />
+
+        {/* Location - Optional */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <input 
+              className="w-full p-4 bg-transparent font-black outline-none text-sm"
+              placeholder="City"
+              onChange={e => setFormData({...formData, city: e.target.value})}
+            />
+          </div>
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <input 
+              className="w-full p-4 bg-transparent font-black outline-none text-sm"
+              placeholder="Address"
+              onChange={e => setFormData({...formData, address: e.target.value})}
+            />
+          </div>
+        </div>
+
+        {/* Contact - Optional */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <input 
+              className="w-full p-4 bg-transparent font-black outline-none text-sm"
+              placeholder="Phone"
+              onChange={e => setFormData({...formData, phone: e.target.value})}
+            />
+          </div>
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+            <input 
+              className="w-full p-4 bg-transparent font-black outline-none text-sm"
+              placeholder="WhatsApp"
+              onChange={e => setFormData({...formData, whatsapp: e.target.value})}
+            />
+          </div>
         </div>
 
         <button 
           onClick={handleRegister} 
           disabled={loading || count >= 10}
-          className="w-full bg-blue-600 text-white p-6 rounded-[2rem] font-black shadow-xl active:scale-95 transition-all disabled:bg-slate-300"
+          className="w-full bg-blue-600 text-white p-5 rounded-[2rem] font-black shadow-xl active:scale-95 transition-all disabled:bg-slate-200 mt-6"
         >
-          {loading ? "PROCESSING..." : count >= 10 ? "LIMIT REACHED" : "REGISTER & ACTIVATE OWNER"}
+          {loading ? "PROCESING..." : "ACTIVATE ACCOUNT"}
+        </button>
+
+        <button 
+          onClick={onComplete}
+          className="w-full p-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
+        >
+          Back
         </button>
       </div>
     </div>
