@@ -23,6 +23,15 @@ function App() {
 
   // Show a clean loading state while useAuth fetches the user from Supabase
   if (loading) {
+    
+<button 
+  onClick={() => { localStorage.clear(); window.location.reload(); }}
+  className="fixed top-0 left-0 z-[9999] bg-red-600 text-white p-2 text-[10px] font-black"
+>
+  FORCE DATA SYNC
+</button>
+
+    
     return (
       <div className="min-h-screen bg-[#FDFDFD] flex flex-col items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
