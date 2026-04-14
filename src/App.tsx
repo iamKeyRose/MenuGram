@@ -8,6 +8,7 @@ import { MenuManagement } from './pages/MenuManagement';
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
+import { OwnerDashboard } from './pages/OwnerDashboard';
 
 function App() {
   const { dbUser, loading } = useAuth();
