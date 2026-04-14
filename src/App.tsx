@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Home } from './pages/home';
-//import { Orders } from './pages/orders'; // You'll create this next
-//import { Profile } from './pages/profile'; // You'll create this next
+import { Orders } from './pages/orders'; // You'll create this next
+import { Orders } from './pages/orders';
+import { Profile } from './pages/profile'; // You'll create this next
 import { BottomNav } from './components/BottomNav';
 import { useTelegram } from './hooks/useTelegram';
 
@@ -13,8 +14,9 @@ function App() {
   const renderPage = () => {
     switch (activeTab) {
       case 'home': return <Home />;
-     // case 'orders': return <Orders />;
-     // case 'profile': return <Profile />;
+      case 'home': return <Search />;
+      case 'orders': return <Orders />;
+      case 'profile': return <Profile />;
       case 'search': return <div className="p-10 text-center">Search Feature Coming...</div>;
       case 'favorites': return <div className="p-10 text-center">Favorites Coming...</div>;
       default: return <Home />;
