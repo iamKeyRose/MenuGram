@@ -4,7 +4,7 @@ import { Search } from './pages/search';
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
 import { OwnerRegistration } from './pages/OwnerRegistration';
-import { MenuManagement } from './pages/MenuManagement'; // NEW IMPORT
+import { MenuManagement } from './pages/MenuManagement'; 
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
@@ -12,7 +12,7 @@ import { useAuth } from './hooks/useAuth';
 function App() {
   const { dbUser, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('home');
-  const [newResId, setNewResId] = useState<string | null>(null); // NEW STATE
+  const [newResId, setNewResId] = useState<string | null>(null); 
   const { user } = useTelegram();
 
   if (loading) {
@@ -27,17 +27,32 @@ function App() {
         return <Search />;
       case 'orders': 
         return <Orders />;
+      
       case 'owner-reg': 
-        return <OwnerRegistration dbUser={dbUser} onComplete={(id: string) => { 
-          setNewResId(id); 
-          setActiveTab('menu-setup'); // Redirect to menu build
-        }} />;
-      case 'menu-setup': // NEW CASE
-        return <OwnerRegistration restaurantId={newResId!} onFinish={() => window.location.reload()} />;
+        return (
+          <OwnerRegistration 
+            dbUser={dbUser} 
+            onComplete={(id: string) => { 
+              if (id) {
+                setNewResId(id); 
+                setActiveTab('menu-setup'); 
+              } else {
+                setActiveTab('profile');
+              }
+            }} 
+          />
+        );
+
+      case 'menu-setup': 
+        return (
+          <MenuManagement 
+            restaurantId={newResId!} 
+            onComplete={() => window.location.reload()} 
+          />
+        );
+
       case 'profile': 
         return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
-      case 'favorites': 
-        return <div className="p-10 text-center font-bold text-gray-400">Favorites Coming Soon...</div>;
       default: 
         return <Home />;
     }
