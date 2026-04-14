@@ -52,8 +52,8 @@ export const Profile = ({ dbUser, setActiveTab }: { dbUser: any, setActiveTab?: 
       <div className="space-y-3">
         <p className="px-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Partnership</p>
         
-        {/* Registration Button: Visible to Customers and existing Owners (up to 10) */}
-        {(dbUser?.role === 'customer' || dbUser?.role === 'owner') && (
+        {/* NEW FEATURE: Visible to Customer, Owner, AND Promoter */}
+        {(dbUser?.role === 'customer' || dbUser?.role === 'owner' || dbUser?.role === 'promoter') && (
           <button 
             onClick={() => setActiveTab && setActiveTab('owner-reg')}
             className="w-full bg-white p-5 rounded-[2rem] border border-slate-100 flex items-center justify-between active:scale-[0.98] transition-all"
@@ -68,7 +68,7 @@ export const Profile = ({ dbUser, setActiveTab }: { dbUser: any, setActiveTab?: 
           </button>
         )}
 
-        {/* Promoter Button: ONLY visible to Customers */}
+        {/* Promoter Button: ONLY visible to Customers (as Owners/Promoters are already partners) */}
         {dbUser?.role === 'customer' && (
           <button 
             onClick={upgradeToPromoter}
