@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTelegram } from '../hooks/useTelegram';
 
-export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onComplete: () => void }) => {
+export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onComplete: (id: string) => void }) => {
   const { user } = useTelegram(); // Kept original dependency
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(0);
@@ -37,7 +37,7 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
 
     // Only insert columns that require manual input
     // The DB handles id, created_at, rating, is_open, etc. automatically
-    const { error: resError } = await supabase
+    const { data, error: resError } = await supabase
       .from('restaurants')
       .insert([{ 
         owner_id: dbUser.auth_id,
@@ -47,7 +47,9 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
         address: formData.address,
         phone: formData.phone,
         whatsapp: formData.whatsapp
-      }]);
+      }])
+      .select()
+      .single(); // Added to capture the ID for Menu Creation
 
     if (resError) {
       alert("Error: " + resError.message);
@@ -61,8 +63,13 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
       }
       
       alert("Registration Successful!");
-      onComplete(); 
-      window.location.reload(); 
+      
+      // Pass the new restaurant ID to the complete function
+      if (data) {
+        onComplete(data.id); 
+      }
+      
+      // Removed window.location.reload() to allow the MenuSetup component to load
     }
     setLoading(false);
   };
@@ -84,6 +91,7 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
             <input 
               className="w-full p-4 bg-transparent font-black outline-none text-sm"
               placeholder="Restaurant Name"
+              value={formData.name}
               onChange={e => setFormData({...formData, name: e.target.value})}
             />
           </div>
@@ -96,6 +104,7 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
             <textarea 
               className="w-full p-4 bg-transparent font-bold outline-none text-sm h-20"
               placeholder="Brief description..."
+              value={formData.description}
               onChange={e => setFormData({...formData, description: e.target.value})}
             />
           </div>
@@ -103,37 +112,53 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
 
         {/* Location - Optional */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
-            <input 
-              className="w-full p-4 bg-transparent font-black outline-none text-sm"
-              placeholder="City"
-              onChange={e => setFormData({...formData, city: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="px-5 text-[10px] font-black uppercase text-slate-400">City</label>
+            <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+              <input 
+                className="w-full p-4 bg-transparent font-black outline-none text-sm"
+                placeholder="City"
+                value={formData.city}
+                onChange={e => setFormData({...formData, city: e.target.value})}
+              />
+            </div>
           </div>
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
-            <input 
-              className="w-full p-4 bg-transparent font-black outline-none text-sm"
-              placeholder="Address"
-              onChange={e => setFormData({...formData, address: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="px-5 text-[10px] font-black uppercase text-slate-400">Address</label>
+            <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+              <input 
+                className="w-full p-4 bg-transparent font-black outline-none text-sm"
+                placeholder="Address"
+                value={formData.address}
+                onChange={e => setFormData({...formData, address: e.target.value})}
+              />
+            </div>
           </div>
         </div>
 
         {/* Contact - Optional */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
-            <input 
-              className="w-full p-4 bg-transparent font-black outline-none text-sm"
-              placeholder="Phone"
-              onChange={e => setFormData({...formData, phone: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="px-5 text-[10px] font-black uppercase text-slate-400">Phone</label>
+            <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+              <input 
+                className="w-full p-4 bg-transparent font-black outline-none text-sm"
+                placeholder="Phone"
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+              />
+            </div>
           </div>
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
-            <input 
-              className="w-full p-4 bg-transparent font-black outline-none text-sm"
-              placeholder="WhatsApp"
-              onChange={e => setFormData({...formData, whatsapp: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="px-5 text-[10px] font-black uppercase text-slate-400">WhatsApp</label>
+            <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
+              <input 
+                className="w-full p-4 bg-transparent font-black outline-none text-sm"
+                placeholder="WhatsApp"
+                value={formData.whatsapp}
+                onChange={e => setFormData({...formData, whatsapp: e.target.value})}
+              />
+            </div>
           </div>
         </div>
 
@@ -142,16 +167,9 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
           disabled={loading || count >= 10}
           className="w-full bg-blue-600 text-white p-5 rounded-[2rem] font-black shadow-xl active:scale-95 transition-all disabled:bg-slate-200 mt-6"
         >
-          {loading ? "PROCESING..." : "ACTIVATE ACCOUNT"}
+          {loading ? "PROCESSING..." : "ACTIVATE ACCOUNT"}
         </button>
 
         <button 
-          onClick={onComplete}
-          className="w-full p-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-        >
-          Back
-        </button>
-      </div>
-    </div>
-  );
-};
+          onClick={() => onComplete('')}
+          className="w-full p-3 text-slate-400 font-bold text-[10px] uppercase
