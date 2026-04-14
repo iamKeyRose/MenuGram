@@ -4,7 +4,7 @@ import { Search } from './pages/search';
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
 import { OwnerRegistration } from './pages/OwnerRegistration';
-import { MenuSetup } from './pages/MenuManagement'; // NEW IMPORT
+import { MenuManagement } from './pages/MenuManagement'; // NEW IMPORT
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
