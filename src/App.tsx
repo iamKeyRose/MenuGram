@@ -13,8 +13,8 @@ function App() {
   const renderPage = () => {
     switch (activeTab) {
       case 'home': return <Home />;
-      case 'orders': return <Orders />;
-      case 'profile': return <Profile />;
+     // case 'orders': return <Orders />;
+     // case 'profile': return <Profile />;
       case 'search': return <div className="p-10 text-center">Search Feature Coming...</div>;
       case 'favorites': return <div className="p-10 text-center">Favorites Coming...</div>;
       default: return <Home />;
