@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Home } from './pages/Home';
-//import { Orders } from './pages/Orders'; // You'll create this next
-//import { Profile } from './pages/Profile'; // You'll create this next
+import { Home } from './pages/home';
+//import { Orders } from './pages/orders'; // You'll create this next
+//import { Profile } from './pages/profile'; // You'll create this next
 import { BottomNav } from './components/BottomNav';
 import { useTelegram } from './hooks/useTelegram';
 
