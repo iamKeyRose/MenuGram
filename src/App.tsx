@@ -3,16 +3,16 @@ import { Home } from './pages/home';
 import { Search } from './pages/search'; 
 import { Orders } from './pages/orders';
 import { Profile } from './pages/profile';
+import { OwnerRegistration } from './pages/ownerRegistration'; // ADDED: Must import to prevent blank screen
 import { BottomNav } from './components/bottomNav'; 
 import { useTelegram } from './hooks/useTelegram';
-import { useAuth } from './hooks/useAuth'; // ADDED: New hook for database sync
+import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { dbUser, loading } = useAuth(); // ADDED: Gets user data from your app_users table
+  const { dbUser, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('home');
   const { user } = useTelegram();
 
-  // ADDED: Simple check to ensure we have the user role before showing the profile
   if (loading) {
     return <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center">Loading...</div>;
   }
@@ -25,12 +25,10 @@ function App() {
         return <Search />;
       case 'orders': 
         return <Orders />;
-           case 'owner-reg': 
-  return <OwnerRegistration dbUser={dbUser} onComplete={() => setActiveTab('profile')} />;
-
+      case 'owner-reg': 
+        return <OwnerRegistration dbUser={dbUser} onComplete={() => setActiveTab('profile')} />;
       case 'profile': 
-  return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
- // UPDATED: Now passes dbUser to the Profile page
+        return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
       case 'favorites': 
         return <div className="p-10 text-center font-bold text-gray-400">Favorites Coming Soon...</div>;
       default: 
