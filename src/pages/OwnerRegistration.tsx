@@ -3,11 +3,10 @@ import { supabase } from '../lib/supabase';
 import { useTelegram } from '../hooks/useTelegram';
 
 export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onComplete: (id: string) => void }) => {
-  const { user } = useTelegram(); // Kept original dependency
+  const { user } = useTelegram(); 
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(0);
 
-  // Focus only on columns that are NOT data-driven
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -35,8 +34,6 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
 
     setLoading(true);
 
-    // Only insert columns that require manual input
-    // The DB handles id, created_at, rating, is_open, etc. automatically
     const { data, error: resError } = await supabase
       .from('restaurants')
       .insert([{ 
@@ -49,12 +46,11 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
         whatsapp: formData.whatsapp
       }])
       .select()
-      .single(); // Added to capture the ID for Menu Creation
+      .single();
 
     if (resError) {
       alert("Error: " + resError.message);
     } else {
-      // Upgrade role from Customer/Promoter to Owner
       if (dbUser.role !== 'owner') {
         await supabase
           .from('app_users')
@@ -64,12 +60,9 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
       
       alert("Registration Successful!");
       
-      // Pass the new restaurant ID to the complete function
       if (data) {
         onComplete(data.id); 
       }
-      
-      // Removed window.location.reload() to allow the MenuSetup component to load
     }
     setLoading(false);
   };
@@ -84,7 +77,6 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
       </header>
 
       <div className="space-y-4">
-        {/* Name - Database 'NOT NULL' */}
         <div className="space-y-1">
           <label className="px-5 text-[10px] font-black uppercase text-blue-600">Name *</label>
           <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
@@ -97,7 +89,6 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
           </div>
         </div>
 
-        {/* Description - Optional */}
         <div className="space-y-1">
           <label className="px-5 text-[10px] font-black uppercase text-slate-400">Bio</label>
           <div className="bg-white rounded-[1.5rem] border border-slate-100 p-1 shadow-sm">
@@ -110,7 +101,6 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
           </div>
         </div>
 
-        {/* Location - Optional */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="px-5 text-[10px] font-black uppercase text-slate-400">City</label>
@@ -136,7 +126,6 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
           </div>
         </div>
 
-        {/* Contact - Optional */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="px-5 text-[10px] font-black uppercase text-slate-400">Phone</label>
@@ -172,4 +161,11 @@ export const OwnerRegistration = ({ dbUser, onComplete }: { dbUser: any, onCompl
 
         <button 
           onClick={() => onComplete('')}
-          className="w-full p-3 text-slate-400 font-bold text-[10px] uppercase
+          className="w-full p-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest"
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+};
