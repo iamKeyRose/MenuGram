@@ -9,6 +9,8 @@ import { BottomNav } from './components/bottomNav';
 import { useTelegram } from './hooks/useTelegram';
 import { useAuth } from './hooks/useAuth';
 import { OwnerDashboard } from './pages/OwnerDashboard';
+// App.tsx
+import { AdminDashboard } from './pages/AdminDashboard';
 
 function App() {
   const { dbUser, loading } = useAuth();
