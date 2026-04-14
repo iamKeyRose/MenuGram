@@ -50,7 +50,9 @@ function App() {
             onComplete={() => window.location.reload()} 
           />
         );
-
+case 'owner-dashboard':
+  return <OwnerDashboard dbUser={dbUser} />;
+        
       case 'profile': 
         return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
       default: 
