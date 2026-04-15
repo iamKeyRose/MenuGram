@@ -10,6 +10,7 @@ import { useAuth } from './hooks/useAuth';
 import { OwnerDashboard } from './pages/OwnerDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { PromoterDashboard } from './pages/PromoterDashboard';
+import { CreateAdForm } from './pages/CreateAdForm'; // Added Import
 
 function App() {
   const { dbUser, loading } = useAuth();
@@ -46,6 +47,19 @@ function App() {
         }
         return <PromoterDashboard dbUser={dbUser} setActiveTab={setActiveTab} />;
 
+      // --- NEW AD CREATION WIRING ---
+      case 'ad-creation':
+        if (dbUser?.role !== 'promoter') {
+          setActiveTab('profile');
+          return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
+        }
+        return (
+          <CreateAdForm 
+            dbUser={dbUser} 
+            onComplete={() => setActiveTab('ad-partner-console')} 
+          />
+        );
+
       case 'system-admin':
         if (dbUser?.role !== 'admin') {
           setActiveTab('profile');
@@ -70,19 +84,23 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans selection:bg-blue-100">
-      {/* Conditional Padding: 
-          Removed bottom padding for Admin and Promoter consoles 
-          to allow the full-screen sidebar to work correctly.
+      {/* Added 'ad-creation' to the padding check to ensure 
+          the form looks clean without bottom spacing.
       */}
-      <main className={`${(activeTab === 'system-admin' || activeTab === 'ad-partner-console') ? '' : 'pb-32'}`}>
+      <main className={`${(
+        activeTab === 'system-admin' || 
+        activeTab === 'ad-partner-console' || 
+        activeTab === 'ad-creation'
+      ) ? '' : 'pb-32'}`}>
         {renderPage()}
       </main>
 
-      {/* Hide BottomNav for Professional consoles (Admin/Promoter/Setup) 
-          so they use their own sidebars instead.
+      {/* Hide BottomNav for 'ad-creation' as well 
+          since the form provides its own 'Back' button.
       */}
       {activeTab !== 'system-admin' && 
        activeTab !== 'ad-partner-console' && 
+       activeTab !== 'ad-creation' && 
        activeTab !== 'menu-setup' && (
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} dbUser={dbUser} />
       )}
