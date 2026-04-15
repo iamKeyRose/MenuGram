@@ -82,7 +82,6 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
           </div>
         </div>
 
-        {/* DYNAMIC MENU SECTIONS */}
         {loading ? (
           <div className="py-20 text-center">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -97,7 +96,6 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
               return (
                 <React.Fragment key={cat.id}>
                   <section>
-                    {/* SECTION HEADER */}
                     <div className="flex justify-between items-end mb-4 px-1">
                       <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900 border-l-4 border-blue-600 pl-3 leading-none">
                         {cat.name}
@@ -107,7 +105,6 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
                       </button>
                     </div>
 
-                    {/* ITEM CONTAINER: SWIPE OR GRID */}
                     <div className={
                       shouldSwipe 
                       ? "flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 px-1" 
@@ -137,7 +134,6 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
                     </div>
                   </section>
 
-                  {/* AD SPACE */}
                   {idx < categories.length - 1 && (
                     <div className="py-2">
                       <div className="bg-slate-900 h-24 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden border border-slate-800">
