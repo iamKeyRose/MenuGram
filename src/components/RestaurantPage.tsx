@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronLeft, MapPin, Star, ShieldCheck, Clock, Percent, Rocket } from 'lucide-react';
+import { ChevronLeft, MapPin, Star, ShieldCheck, Clock, Percent, Rocket, ArrowRight } from 'lucide-react';
 
 interface RestaurantPageProps {
   restaurant: any;
   onBack: () => void;
-  onItemClick: (item: any) => void; // Added this prop
+  onItemClick: (item: any) => void;
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop";
@@ -19,21 +19,19 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
     const fetchRestaurantMenu = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Categories and Items for THIS restaurant only
         const [catsRes, itemsRes] = await Promise.all([
           supabase.from('menu_categories').select('*').order('display_order'),
           supabase.from('menu_items')
             .select(`
               *,
               restaurants (name, is_verified, city, logo_url)
-            `) // Added restaurant details so ItemDetails works from here too
+            `)
             .eq('restaurant_id', restaurant.id)
         ]);
 
         const allItems = itemsRes.data || [];
         const cats = catsRes.data || [];
         
-        // 2. Organize items by category
         const organized: Record<string, any[]> = {};
         cats.forEach(cat => {
           const catItems = allItems.filter(item => item.category_id === cat.id);
@@ -91,42 +89,69 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
             <p className="text-[10px] font-black uppercase text-slate-400">Loading Menu...</p>
           </div>
         ) : (
-          <div className="space-y-10 mt-8">
-            {categories.map((cat, idx) => (
-              <React.Fragment key={cat.id}>
-                <section>
-                  <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900 mb-4 border-l-4 border-blue-600 pl-3">
-                    {cat.name}
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    {menuData[cat.id]?.map((item) => (
-                      <div 
-                        key={item.id} 
-                        onClick={() => onItemClick(item)} // NEW: Triggers the ItemDetails overlay
-                        className="bg-white border border-slate-100 p-3 rounded-2xl shadow-sm active:scale-95 transition-all cursor-pointer"
-                      >
-                        <img src={item.image_url || FALLBACK_IMAGE} className="w-full aspect-square object-cover rounded-xl mb-2" />
-                        <h3 className="text-[11px] font-black text-slate-800 truncate uppercase leading-tight">{item.name}</h3>
-                        <p className="text-[10px] font-black text-blue-600 mt-1">{item.price} AED</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+          <div className="space-y-12 mt-8">
+            {categories.map((cat, idx) => {
+              const items = menuData[cat.id] || [];
+              const shouldSwipe = items.length > 4;
 
-                {/* AD SPACE BETWEEN CATEGORIES */}
-                {idx < categories.length - 1 && (
-                  <div className="py-2">
-                    <div className="bg-blue-600 h-24 rounded-2xl p-6 flex items-center justify-between relative overflow-hidden">
-                      <div className="relative z-10">
-                        <p className="text-[8px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Special Offer</p>
-                        <h4 className="text-white font-black italic uppercase text-sm leading-none">Flash Deal at {restaurant.name}</h4>
-                      </div>
-                      <Rocket size={40} className="text-white/20 absolute -right-2 -bottom-2 rotate-12" />
+              return (
+                <React.Fragment key={cat.id}>
+                  <section>
+                    {/* SECTION HEADER */}
+                    <div className="flex justify-between items-end mb-4 px-1">
+                      <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900 border-l-4 border-blue-600 pl-3 leading-none">
+                        {cat.name}
+                      </h2>
+                      <button className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-600 tracking-tighter active:opacity-50 transition-opacity">
+                        View All <ArrowRight size={12} />
+                      </button>
                     </div>
-                  </div>
-                )}
-              </React.Fragment>
-            ))}
+
+                    {/* ITEM CONTAINER: SWIPE OR GRID */}
+                    <div className={
+                      shouldSwipe 
+                      ? "flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 px-1" 
+                      : "grid grid-cols-2 gap-4 px-1"
+                    }>
+                      {items.map((item) => (
+                        <div 
+                          key={item.id} 
+                          onClick={() => onItemClick(item)}
+                          className={`bg-white border border-slate-100 p-3 rounded-2xl shadow-sm active:scale-95 transition-all cursor-pointer flex-shrink-0 ${
+                            shouldSwipe ? "w-[160px] snap-start" : "w-full"
+                          }`}
+                        >
+                          <img 
+                            src={item.image_url || FALLBACK_IMAGE} 
+                            className="w-full aspect-square object-cover rounded-xl mb-2" 
+                            alt={item.name}
+                          />
+                          <h3 className="text-[11px] font-black text-slate-800 truncate uppercase leading-tight">
+                            {item.name}
+                          </h3>
+                          <p className="text-[10px] font-black text-blue-600 mt-1">
+                            {item.price} AED
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* AD SPACE */}
+                  {idx < categories.length - 1 && (
+                    <div className="py-2">
+                      <div className="bg-slate-900 h-24 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden border border-slate-800">
+                        <div className="relative z-10">
+                          <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Chef's Choice</p>
+                          <h4 className="text-white font-black italic uppercase text-sm leading-none">Top Rated in {cat.name}</h4>
+                        </div>
+                        <Rocket size={40} className="text-white/10 absolute -right-2 -bottom-2 rotate-12" />
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         )}
       </div>
