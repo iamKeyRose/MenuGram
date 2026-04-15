@@ -31,8 +31,8 @@ export const Home = () => {
         const cats = catsRes.data || [];
         
         const organized: Record<string, any[]> = {
-          'featured': allItems.filter(i => i.restaurants?.subscription_tier === 'premium').slice(0, 10),
-          'special_discount': allItems.filter(i => i.price < (i.original_price || i.price)).slice(0, 10),
+          'featured': allItems.filter(i => i.restaurants?.subscription_tier === 'premium'),
+          'special_discount': allItems.filter(i => i.price < (i.original_price || i.price)),
         };
 
         cats.forEach(cat => {
@@ -55,8 +55,8 @@ export const Home = () => {
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Marketplace...</p>
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Marketplace...</p>
     </div>
   );
 
@@ -70,15 +70,15 @@ export const Home = () => {
             Dubai Marina, UAE <ArrowRight size={12} className="text-slate-300" />
           </h1>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-slate-200">
+        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-slate-200">
           {user?.first_name?.[0] || 'U'}
         </div>
       </header>
 
       {/* QUICK CATEGORY PILLS */}
-      <div className="flex gap-3 overflow-x-auto px-6 py-4 no-scrollbar bg-white">
+      <div className="flex gap-2 overflow-x-auto px-6 py-4 no-scrollbar bg-white">
         {categories.map(cat => (
-          <button key={cat.id} className="whitespace-nowrap px-6 py-2 rounded-full bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
+          <button key={cat.id} className="whitespace-nowrap px-5 py-1.5 rounded-lg bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-100 hover:bg-blue-600 hover:text-white transition-colors">
             {cat.name}
           </button>
         ))}
@@ -87,29 +87,37 @@ export const Home = () => {
       {/* TOP AD CAROUSEL */}
       <MainAdCarousel ads={activeAds.filter(a => a.placement === 'home_top')} />
 
-      <div className="mt-8 space-y-12">
-        <CategoryRow title="Featured Dishes" items={sectionData['featured']} icon={<Rocket size={16}/>} />
+      <div className="mt-8 space-y-10">
+        {/* Featured Section */}
+        <CategoryGridRow title="Featured Dishes" items={sectionData['featured']} icon={<Rocket size={16}/>} />
         
         <InlineAd ads={activeAds} index={0} />
 
-        {/* Dynamic Database Categories */}
+        {/* Database Categories as 3-Row Grids */}
         {categories.map((cat, idx) => (
           <React.Fragment key={cat.id}>
-            <CategoryRow title={cat.name} items={sectionData[cat.id]} />
+            <CategoryGridRow title={cat.name} items={sectionData[cat.id]} />
             {idx % 2 === 1 && <InlineAd ads={activeAds} index={idx + 1} />}
           </React.Fragment>
         ))}
         
-        <CategoryRow title="Massive Deals" items={sectionData['special_discount']} icon={<Percent size={16}/>} />
+        <CategoryGridRow title="Massive Deals" items={sectionData['special_discount']} icon={<Percent size={16}/>} />
       </div>
     </div>
   );
 };
 
-/* --- SHARED COMPONENTS --- */
+/* --- 3x3 HORIZONTAL GRID COMPONENT --- */
 
-const CategoryRow = ({ title, items, icon }: any) => {
+const CategoryGridRow = ({ title, items, icon }: any) => {
   if (!items || items.length === 0) return null;
+
+  // Function to chunk items into groups of 3 for the 3-row layout
+  const rows: any[][] = [];
+  for (let i = 0; i < items.length; i += 3) {
+    rows.push(items.slice(i, i + 3));
+  }
+
   return (
     <section className="px-6">
       <div className="flex justify-between items-end mb-4">
@@ -117,25 +125,50 @@ const CategoryRow = ({ title, items, icon }: any) => {
           {icon && <div className="text-blue-600">{icon}</div>}
           <h2 className="text-xl font-black tracking-tighter uppercase italic text-slate-900">{title}</h2>
         </div>
-        <button className="text-[10px] font-black uppercase tracking-widest text-slate-400">View All</button>
+        <button 
+          onClick={() => console.log(`Viewing all ${title}`)}
+          className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+        >
+          View All
+        </button>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-        {items.map((item: any) => (
-          <div key={item.id} className="min-w-[170px] max-w-[170px] group">
-            <div className="relative h-44 rounded-[2.5rem] overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
-              <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
-              <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
-                <p className="text-[8px] font-black text-slate-800 truncate uppercase">{item.restaurants?.name}</p>
+
+      {/* Horizontal Container */}
+      <div className="flex overflow-x-auto no-scrollbar pb-2 snap-x">
+        {rows.map((columnItems, colIdx) => (
+          <div key={colIdx} className="flex flex-col gap-4 min-w-[280px] mr-4 snap-start">
+            {columnItems.map((item: any) => (
+              <div key={item.id} className="flex items-center gap-3 group active:scale-95 transition-transform">
+                {/* Item Image */}
+                <div className="relative h-20 w-20 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 border border-slate-100">
+                  <img src={item.image_url} className="w-full h-full object-cover" alt="" />
+                  {item.restaurants?.is_verified && (
+                    <div className="absolute top-1 right-1 bg-blue-600 p-0.5 rounded-md shadow-sm">
+                      <Star size={8} className="text-white fill-white" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Item Info */}
+                <div className="flex-1 min-w-0 border-b border-slate-50 pb-2 h-full flex flex-col justify-center">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight truncate">
+                    {item.restaurants?.name}
+                  </p>
+                  <h3 className="text-sm font-black text-slate-800 truncate leading-tight mb-1">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs font-black text-blue-600">{item.price} AED</p>
+                </div>
               </div>
-            </div>
-            <h3 className="mt-3 text-xs font-black text-slate-800 truncate px-1">{item.name}</h3>
-            <p className="text-xs font-black text-blue-600 px-1 mt-0.5">{item.price} AED</p>
+            ))}
           </div>
         ))}
       </div>
     </section>
   );
 };
+
+/* --- AD COMPONENTS --- */
 
 const MainAdCarousel = ({ ads }: any) => {
   const [index, setIndex] = useState(0);
@@ -151,14 +184,14 @@ const MainAdCarousel = ({ ads }: any) => {
 
   return (
     <div className="px-6 mt-4">
-      <div className="relative h-52 w-full rounded-[3rem] overflow-hidden bg-slate-900 border-4 border-white shadow-xl shadow-slate-200">
+      <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-md">
         {isVideo ? (
            <video src={current.image_url} autoPlay muted loop className="w-full h-full object-cover opacity-70" />
         ) : (
            <img src={current.image_url} className="w-full h-full object-cover opacity-70" alt="" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex flex-col justify-end p-8">
-           <h4 className="text-white font-black text-2xl tracking-tighter uppercase italic leading-none">{current.title}</h4>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+           <h4 className="text-white font-black text-lg tracking-tighter uppercase italic leading-none">{current.title}</h4>
         </div>
       </div>
     </div>
@@ -170,12 +203,12 @@ const InlineAd = ({ ads, index }: any) => {
   if (!ad) return null;
   return (
     <div className="px-6 py-2">
-      <div className="bg-slate-900 h-24 rounded-[2.5rem] flex items-center justify-between px-10 overflow-hidden relative">
+      <div className="bg-slate-900 h-20 rounded-xl flex items-center justify-between px-8 overflow-hidden relative">
         <div className="relative z-10">
-          <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Recommended</p>
-          <h5 className="font-black text-white italic uppercase text-lg">{ad.title}</h5>
+          <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Sponsored</p>
+          <h5 className="font-black text-white italic uppercase text-md">{ad.title}</h5>
         </div>
-        <img src={ad.image_url} className="absolute right-0 w-40 h-full object-cover opacity-40" alt="" />
+        <img src={ad.image_url} className="absolute right-0 w-32 h-full object-cover opacity-30" alt="" />
       </div>
     </div>
   );
