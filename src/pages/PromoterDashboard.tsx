@@ -23,10 +23,9 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
 
   const fetchPartnerData = async () => {
     try {
-      const [adsRes, walletRes, transRes] = await Promise.allSettled([
+      const [adsRes, walletRes] = await Promise.allSettled([
         supabase.from('ads').select('*').eq('created_by', dbUser.id).order('created_at', { ascending: false }),
-        supabase.from('wallets').select('balance').eq('owner_id', dbUser.id).single(),
-        supabase.from('transactions').select('amount').eq('status', 'success') // Simplified for demo
+        supabase.from('wallets').select('balance').eq('owner_id', dbUser.id).single()
       ]);
 
       const adData = adsRes.status === 'fulfilled' ? adsRes.value.data || [] : [];
@@ -38,7 +37,7 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
         totalImpressions: adData.reduce((acc: number, curr: any) => acc + (curr.impressions_count || 0), 0),
         totalClicks: adData.reduce((acc: number, curr: any) => acc + (curr.clicks_count || 0), 0),
         walletBalance: walletData?.balance || 0,
-        totalSpend: 0 // Logic to sum ad-specific transactions
+        totalSpend: 0 
       });
     } catch (error) {
       console.error("Partner Load Error:", error);
@@ -70,10 +69,14 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
 
         <nav className="space-y-1 flex-1">
           <SideLink icon={<LayoutGrid size={18}/>} label="Ad Console" active />
+          <SideLink 
+             icon={<Plus size={18}/>} 
+             label="Create New Ad" 
+             onClick={() => setActiveTab?.('ad-creation')} 
+          />
           <SideLink icon={<Megaphone size={18}/>} label="My Campaigns" badge={stats.activeAds} />
           <SideLink icon={<Wallet size={18}/>} label="Ad Credits" />
           <SideLink icon={<BarChart3 size={18}/>} label="ROI Reports" />
-          <SideLink icon={<FileText size={18}/>} label="Invoices" />
         </nav>
 
         {setActiveTab && (
@@ -90,7 +93,12 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
             <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 mb-1">Campaign Overview</h2>
             <p className="text-slate-500 font-medium tracking-tight text-sm">Real-time performance of your promoted products</p>
           </div>
-          <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-blue-100 flex items-center gap-3">
+          
+          {/* FUNCTIONAL CREATE AD BUTTON */}
+          <button 
+            onClick={() => setActiveTab?.('ad-creation')}
+            className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-blue-100 flex items-center gap-3 active:scale-95"
+          >
              <Plus size={16} /> Create Ad
           </button>
         </div>
@@ -104,7 +112,6 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* CAMPAIGN LIST */}
           <div className="xl:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-8 border-b border-slate-50 flex justify-between items-center">
                 <h3 className="font-black text-lg tracking-tight uppercase italic text-slate-800">Placement Performance</h3>
@@ -121,7 +128,7 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-50">
-                      {ads.map((ad) => (
+                      {ads.length > 0 ? ads.map((ad) => (
                         <tr key={ad.id} className="hover:bg-slate-50/50 transition-colors">
                            <td className="px-8 py-6">
                               <p className="font-black text-slate-800">{ad.title}</p>
@@ -136,23 +143,37 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
                               {ad.impressions_count > 0 ? ((ad.clicks_count / ad.impressions_count) * 100).toFixed(2) : 0}%
                            </td>
                            <td className="px-8 py-6 text-right">
-                              <button className="text-slate-400 hover:text-blue-600 p-2"><Settings size={18} /></button>
+                              <button className="text-slate-400 hover:text-blue-600 p-2"><SettingsIcon size={18} /></button>
                            </td>
                         </tr>
-                      ))}
+                      )) : (
+                        <tr>
+                          <td colSpan={4} className="px-8 py-20 text-center">
+                            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">No campaigns found</p>
+                            <button 
+                              onClick={() => setActiveTab?.('ad-creation')}
+                              className="mt-4 text-blue-600 font-black text-[10px] uppercase underline tracking-widest"
+                            >
+                              Launch your first ad
+                            </button>
+                          </td>
+                        </tr>
+                      )}
                    </tbody>
                 </table>
              </div>
           </div>
 
-          {/* SIDEBAR TOOLS */}
           <div className="space-y-6">
             <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-slate-200">
                <TrendingUp className="text-blue-500 mb-4" size={32} />
                <h3 className="font-black text-xl tracking-tight mb-2">Target Better</h3>
-               <p className="text-slate-400 text-xs font-medium leading-relaxed mb-6">Your ads are currently performing 12% better than the category average. Consider increasing budget for "Home Screen" placements.</p>
-               <button className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-slate-900 transition-all">
-                  Boost Results
+               <p className="text-slate-400 text-xs font-medium leading-relaxed mb-6">Your ads are currently performing well. Consider using specific category placements for higher conversion.</p>
+               <button 
+                onClick={() => setActiveTab?.('ad-creation')}
+                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-slate-900 transition-all"
+               >
+                 Boost Results
                </button>
             </div>
 
@@ -160,10 +181,8 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
                <h3 className="font-black text-lg mb-6 flex items-center gap-2 text-slate-800">
                   <Calendar size={18} className="text-slate-400" /> Recent Activity
                </h3>
-               <div className="space-y-4">
-                  <ActivityItem label="Wallet Top-up" time="2h ago" value="+500 AED" positive />
-                  <ActivityItem label="Ad Expiry: Banner A" time="1d ago" value="Paused" />
-                  <ActivityItem label="Ad Renewal" time="3d ago" value="-150 AED" />
+               <div className="space-y-4 text-sm font-medium text-slate-500">
+                 No recent billing activity found.
                </div>
             </div>
           </div>
@@ -175,8 +194,11 @@ export const PromoterDashboard = ({ dbUser, setActiveTab }: { dbUser: any, setAc
 
 /* REUSABLE UI COMPONENTS */
 
-const SideLink = ({ icon, label, active = false, badge = 0 }: any) => (
-  <div className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+const SideLink = ({ icon, label, active = false, badge = 0, onClick }: any) => (
+  <div 
+    onClick={onClick}
+    className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+  >
     <div className="flex items-center gap-3">
       {icon}
       <span className="text-sm font-bold tracking-tight">{label}</span>
@@ -198,16 +220,6 @@ const KPICard = ({ title, value, icon, color, bg, trend }: any) => (
   </div>
 );
 
-const ActivityItem = ({ label, time, value, positive = false }: any) => (
-  <div className="flex justify-between items-center border-b border-slate-50 pb-4 last:border-0 last:pb-0">
-     <div>
-        <p className="text-xs font-black text-slate-800">{label}</p>
-        <p className="text-[9px] font-bold text-slate-400 uppercase">{time}</p>
-     </div>
-     <span className={`text-[10px] font-black ${positive ? 'text-emerald-600' : 'text-slate-400'}`}>{value}</span>
-  </div>
-);
-
-const Settings = ({ size, className }: any) => (
+const SettingsIcon = ({ size, className }: any) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
 );
