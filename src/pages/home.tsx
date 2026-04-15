@@ -30,15 +30,14 @@ export const Home = () => {
         const cats = catsRes.data || [];
         
         const organized: Record<string, any[]> = {
-          'featured': allItems.filter(i => i.is_featured).slice(0, 9),
-          'special_discount': allItems.filter(i => i.price < (i.original_price || i.price)).slice(0, 9),
+          'featured': allItems.filter(i => i.is_featured),
+          'special_discount': allItems.filter(i => i.price < (i.original_price || i.price)),
         };
 
         cats.forEach(cat => {
           organized[cat.id] = allItems
             .filter(item => item.category_id === cat.id)
-            .sort((a, b) => (b.restaurants?.is_verified ? 1 : -1))
-            .slice(0, 9);
+            .sort((a, b) => (b.restaurants?.is_verified ? 1 : -1));
         });
 
         setCategories(cats);
@@ -106,14 +105,20 @@ export const Home = () => {
   );
 };
 
-/* --- 3x3 GRID CONTAINER COMPONENT --- */
+/* --- 3x3 PAGINATED GRID COMPONENT --- */
 
 const MenuGrid = ({ title, items, icon }: any) => {
   if (!items || items.length === 0) return null;
 
+  // Split items into pages of 9
+  const pages: any[][] = [];
+  for (let i = 0; i < items.length; i += 9) {
+    pages.push(items.slice(i, i + 9));
+  }
+
   return (
-    <section className="px-6">
-      <div className="flex justify-between items-center mb-5">
+    <section className="w-full">
+      <div className="flex justify-between items-center mb-5 px-6">
         <div className="flex items-center gap-2">
           {icon && <div className="text-blue-600">{icon}</div>}
           <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900">{title}</h2>
@@ -126,32 +131,36 @@ const MenuGrid = ({ title, items, icon }: any) => {
         </button>
       </div>
 
-      {/* The 3x3 Grid Wrapper */}
-      <div className="grid grid-cols-3 gap-x-3 gap-y-6">
-        {items.map((item: any) => (
-          <div key={item.id} className="flex flex-col group cursor-pointer active:scale-95 transition-transform">
-            {/* Image Icon */}
-            <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-sm">
-              <img src={item.image_url} className="w-full h-full object-cover" alt={item.name} />
-              {item.restaurants?.is_verified && (
-                <div className="absolute top-1.5 right-1.5 bg-blue-600 p-1 rounded-lg shadow-md">
-                  <Star size={8} className="text-white fill-white" />
+      {/* Horizontal Page Scroller */}
+      <div className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        {pages.map((pageItems, pageIdx) => (
+          <div key={pageIdx} className="min-w-full px-6 snap-start grid grid-cols-3 gap-x-3 gap-y-6">
+            {pageItems.map((item: any) => (
+              <div key={item.id} className="flex flex-col group cursor-pointer active:scale-95 transition-transform">
+                {/* Image Icon */}
+                <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-sm">
+                  <img src={item.image_url} className="w-full h-full object-cover" alt={item.name} />
+                  {item.restaurants?.is_verified && (
+                    <div className="absolute top-1.5 right-1.5 bg-blue-600 p-1 rounded-lg shadow-md">
+                      <Star size={8} className="text-white fill-white" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            
-            {/* Metadata (Stacked at bottom) */}
-            <div className="flex flex-col">
-              <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest truncate">
-                {item.restaurants?.name}
-              </span>
-              <h3 className="text-[11px] font-black text-slate-800 truncate leading-tight my-0.5">
-                {item.name}
-              </h3>
-              <span className="text-[10px] font-black text-blue-600">
-                {item.price} <span className="text-[8px]">AED</span>
-              </span>
-            </div>
+                
+                {/* Metadata */}
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest truncate">
+                    {item.restaurants?.name}
+                  </span>
+                  <h3 className="text-[11px] font-black text-slate-800 truncate leading-tight my-0.5">
+                    {item.name}
+                  </h3>
+                  <span className="text-[10px] font-black text-blue-600">
+                    {item.price} <span className="text-[8px]">AED</span>
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
