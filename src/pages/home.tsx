@@ -15,7 +15,7 @@ export const Home = () => {
   // VIEW TRACKING & SELECTION
   const [view, setView] = useState<'home' | 'categories' | 'nearby'>('home');
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null); // NEW: Track selected restaurant
+  const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null); 
   const [searchQuery, setSearchQuery] = useState('');
   
   const [categories, setCategories] = useState<any[]>([]);
@@ -181,7 +181,7 @@ export const Home = () => {
           {filteredRestaurants.length > 0 ? filteredRestaurants.map(res => (
             <div 
               key={res.id} 
-              onClick={() => setSelectedRestaurant(res)} // NEW: Trigger Restaurant Page
+              onClick={() => setSelectedRestaurant(res)} 
               className="bg-white border border-slate-100 p-4 rounded-2xl flex gap-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
             >
               <img 
@@ -207,17 +207,18 @@ export const Home = () => {
       )}
 
       {/* OVERLAYS */}
-      {selectedItem && (
-        <ItemDetails 
-          item={selectedItem} 
-          onBack={() => setSelectedItem(null)} 
-        />
-      )}
-
       {selectedRestaurant && (
         <RestaurantPage 
           restaurant={selectedRestaurant} 
           onBack={() => setSelectedRestaurant(null)} 
+          onItemClick={(item) => setSelectedItem(item)} 
+        />
+      )}
+
+      {selectedItem && (
+        <ItemDetails 
+          item={selectedItem} 
+          onBack={() => setSelectedItem(null)} 
         />
       )}
     </div>
