@@ -13,7 +13,8 @@ export const ItemDetails = ({ item, onBack }: ItemDetailsProps) => {
   if (!item) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white overflow-y-auto pb-32 animate-in slide-in-from-right duration-300">
+    /* UPDATED z-index to 120 and changed animation to slide-in-from-bottom for a more premium feel */
+    <div className="fixed inset-0 z-[120] bg-white overflow-y-auto pb-32 animate-in slide-in-from-bottom duration-300">
       {/* HERO IMAGE SECTION */}
       <div className="relative h-[45vh] w-full">
         <img 
