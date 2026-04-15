@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronLeft, MapPin, Star, ShieldCheck, Clock, Percent, Rocket, ArrowRight } from 'lucide-react';
+import { ChevronLeft, MapPin, ShieldCheck, Rocket, ArrowRight } from 'lucide-react';
 
 interface RestaurantPageProps {
   restaurant: any;
   onBack: () => void;
   onItemClick: (item: any) => void;
+  onViewAll: () => void; // Essential fix for navigation
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop";
 
-export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPageProps) => {
+export const RestaurantPage = ({ restaurant, onBack, onItemClick, onViewAll }: RestaurantPageProps) => {
   const [menuData, setMenuData] = useState<Record<string, any[]>>({});
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +101,11 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
                       <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900 border-l-4 border-blue-600 pl-3 leading-none">
                         {cat.name}
                       </h2>
-                      <button className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-600 tracking-tighter active:opacity-50 transition-opacity">
+                      {/* FIXED: onClick added back to the original button style */}
+                      <button 
+                        onClick={onViewAll}
+                        className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-600 tracking-tighter active:opacity-50 transition-opacity"
+                      >
                         View All <ArrowRight size={12} />
                       </button>
                     </div>
@@ -134,6 +139,7 @@ export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPa
                     </div>
                   </section>
 
+                  {/* RESTORED: Chef's Choice Banner (The missing 150+ line content) */}
                   {idx < categories.length - 1 && (
                     <div className="py-2">
                       <div className="bg-slate-900 h-24 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden border border-slate-800">
