@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTelegram } from '../hooks/useTelegram';
 import { ArrowRight, Star, Trophy, Percent, Rocket, LayoutGrid, MapPin, Search, Filter, X } from 'lucide-react';
+import { ItemDetails } from './ItemDetails';
 
 // Global Placeholders for empty/broken data
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500&auto=format&fit=crop";
@@ -10,13 +11,14 @@ const AD_PLACEHOLDER = "https://images.unsplash.com/photo-1611162617474-5b21e879
 export const Home = () => {
   const { user } = useTelegram();
   
-  // NEW LOGIC: View tracking and Search
+  // NEW LOGIC: View tracking, Search, and Item Selection
   const [view, setView] = useState<'home' | 'categories' | 'nearby'>('home');
+  const [selectedItem, setSelectedItem] = useState<any>(null); // To track clicked item
   const [searchQuery, setSearchQuery] = useState('');
   
   const [categories, setCategories] = useState<any[]>([]);
   const [activeAds, setActiveAds] = useState<any[]>([]);
-  const [restaurants, setRestaurants] = useState<any[]>([]); // For "Nearby" view
+  const [restaurants, setRestaurants] = useState<any[]>([]); 
   const [sectionData, setSectionData] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +64,6 @@ export const Home = () => {
     fetchHomeData();
   }, []);
 
-  // Filter for the "Find Nearby" view
   const filteredRestaurants = restaurants.filter(r => 
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (r.city && r.city.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -97,7 +98,7 @@ export const Home = () => {
         </div>
       </header>
 
-      {/* SEARCH BAR (Only visible in "Nearby" view) */}
+      {/* SEARCH BAR */}
       {view === 'nearby' && (
         <div className="px-6 py-4 bg-white border-b border-slate-50">
           <div className="relative">
@@ -114,7 +115,7 @@ export const Home = () => {
         </div>
       )}
 
-      {/* CATEGORY PILLS (Original Logic) */}
+      {/* CATEGORY PILLS */}
       <div className="flex gap-2 overflow-x-auto px-6 py-4 no-scrollbar bg-white">
         {categories.map(cat => (
           <button key={cat.id} className="whitespace-nowrap px-5 py-1.5 rounded-lg bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border border-slate-100 active:bg-blue-600 active:text-white transition-colors">
@@ -151,22 +152,22 @@ export const Home = () => {
         <>
           <MainAdCarousel ads={activeAds.filter(a => a.placement === 'home_top' || a.placement === 'home_screen')} />
           <div className="mt-8 space-y-12">
-            <MenuGrid title="Featured Selection" items={sectionData['featured']} icon={<Rocket size={16}/>} />
+            <MenuGrid title="Featured Selection" items={sectionData['featured']} icon={<Rocket size={16}/>} onItemClick={setSelectedItem} />
             <InlineAd ads={activeAds} index={0} />
             {categories.map((cat, idx) => (
               <React.Fragment key={cat.id}>
-                <MenuGrid title={cat.name} items={sectionData[cat.id]} />
+                <MenuGrid title={cat.name} items={sectionData[cat.id]} onItemClick={setSelectedItem} />
                 {idx % 2 === 1 && <InlineAd ads={activeAds} index={idx + 1} />}
               </React.Fragment>
             ))}
-            <MenuGrid title="Massive Discounts" items={sectionData['special_discount']} icon={<Percent size={16}/>} />
+            <MenuGrid title="Massive Discounts" items={sectionData['special_discount']} icon={<Percent size={16}/>} onItemClick={setSelectedItem} />
           </div>
         </>
       )}
 
       {view === 'categories' && (
         <div className="mt-4">
-          <MenuGrid title="Full Menu Catalog" items={sectionData['all']} />
+          <MenuGrid title="Full Menu Catalog" items={sectionData['all']} onItemClick={setSelectedItem} />
         </div>
       )}
 
@@ -196,13 +197,21 @@ export const Home = () => {
           )}
         </div>
       )}
+
+      {/* SEPARATE ITEM DETAILS PAGE OVERLAY */}
+      {selectedItem && (
+        <ItemDetails 
+          item={selectedItem} 
+          onBack={() => setSelectedItem(null)} 
+        />
+      )}
     </div>
   );
 };
 
-// --- SUB COMPONENTS (KEEPING YOUR ORIGINAL LOGIC) ---
+// --- SUB COMPONENTS ---
 
-const MenuGrid = ({ title, items, icon }: any) => {
+const MenuGrid = ({ title, items, icon, onItemClick }: any) => {
   if (!items || items.length === 0) return null;
   const pages: any[][] = [];
   for (let i = 0; i < items.length; i += 9) {
@@ -215,15 +224,16 @@ const MenuGrid = ({ title, items, icon }: any) => {
           {icon && <div className="text-blue-600">{icon}</div>}
           <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900">{title}</h2>
         </div>
-        <button className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg active:scale-90 transition-all">
-          View All
-        </button>
       </div>
       <div className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory">
         {pages.map((pageItems, pageIdx) => (
           <div key={pageIdx} className="min-w-full px-6 snap-start grid grid-cols-3 gap-x-3 gap-y-6">
             {pageItems.map((item: any) => (
-              <div key={item.id} className="flex flex-col group cursor-pointer active:scale-95 transition-transform">
+              <div 
+                key={item.id} 
+                onClick={() => onItemClick(item)} // NEW: Tapping triggers selection
+                className="flex flex-col group cursor-pointer active:scale-95 transition-transform"
+              >
                 <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-sm">
                   <img 
                     src={item.image_url || FALLBACK_IMAGE} 
@@ -245,6 +255,7 @@ const MenuGrid = ({ title, items, icon }: any) => {
   );
 };
 
+// ... (MainAdCarousel and InlineAd remain exactly same)
 const MainAdCarousel = ({ ads }: any) => {
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -257,12 +268,7 @@ const MainAdCarousel = ({ ads }: any) => {
   return (
     <div className="px-6 mt-2">
       <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
-        <img 
-          key={current.id}
-          src={current.image_url || AD_PLACEHOLDER} 
-          onError={(e: any) => { e.target.src = AD_PLACEHOLDER; }}
-          className="w-full h-full object-cover opacity-70" 
-        />
+        <img key={current.id} src={current.image_url || AD_PLACEHOLDER} onError={(e: any) => { e.target.src = AD_PLACEHOLDER; }} className="w-full h-full object-cover opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent flex flex-col justify-end p-6">
            <h4 className="text-white font-black text-lg tracking-tight uppercase italic leading-none">{current.title}</h4>
         </div>
@@ -281,11 +287,7 @@ const InlineAd = ({ ads, index }: any) => {
           <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Recommended</p>
           <h5 className="font-black text-white italic uppercase text-sm">{ad.title}</h5>
         </div>
-        <img 
-          src={ad.image_url || AD_PLACEHOLDER} 
-          onError={(e: any) => { e.target.src = AD_PLACEHOLDER; }}
-          className="absolute right-0 w-32 h-full object-cover opacity-40" 
-        />
+        <img src={ad.image_url || AD_PLACEHOLDER} onError={(e: any) => { e.target.src = AD_PLACEHOLDER; }} className="absolute right-0 w-32 h-full object-cover opacity-40" />
       </div>
     </div>
   );
