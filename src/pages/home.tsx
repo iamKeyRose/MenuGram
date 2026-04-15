@@ -12,9 +12,10 @@ const AD_PLACEHOLDER = "https://images.unsplash.com/photo-1611162617474-5b21e879
 export const Home = () => {
   const { user } = useTelegram();
   
-  // NEW LOGIC: View tracking, Search, and Item Selection
+  // VIEW TRACKING & SELECTION
   const [view, setView] = useState<'home' | 'categories' | 'nearby'>('home');
-  const [selectedItem, setSelectedItem] = useState<any>(null); // To track clicked item
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null); // NEW: Track selected restaurant
   const [searchQuery, setSearchQuery] = useState('');
   
   const [categories, setCategories] = useState<any[]>([]);
@@ -154,7 +155,9 @@ export const Home = () => {
           <MainAdCarousel ads={activeAds.filter(a => a.placement === 'home_top' || a.placement === 'home_screen')} />
           <div className="mt-8 space-y-12">
             <MenuGrid title="Featured Selection" items={sectionData['featured']} icon={<Rocket size={16}/>} onItemClick={setSelectedItem} />
-            <InlineAd ads={activeAds} index={0} />
+            <div onClick={() => setSelectedRestaurant(restaurants[0])} className="cursor-pointer">
+               <InlineAd ads={activeAds} index={0} />
+            </div>
             {categories.map((cat, idx) => (
               <React.Fragment key={cat.id}>
                 <MenuGrid title={cat.name} items={sectionData[cat.id]} onItemClick={setSelectedItem} />
@@ -176,7 +179,11 @@ export const Home = () => {
         <div className="px-6 mt-4 space-y-4">
           <h2 className="text-lg font-black tracking-tighter uppercase italic text-slate-900">Nearby Restaurants</h2>
           {filteredRestaurants.length > 0 ? filteredRestaurants.map(res => (
-            <div key={res.id} className="bg-white border border-slate-100 p-4 rounded-2xl flex gap-4 shadow-sm active:scale-[0.98] transition-all">
+            <div 
+              key={res.id} 
+              onClick={() => setSelectedRestaurant(res)} // NEW: Trigger Restaurant Page
+              className="bg-white border border-slate-100 p-4 rounded-2xl flex gap-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
+            >
               <img 
                 src={res.logo_url || FALLBACK_IMAGE} 
                 onError={(e: any) => { e.target.src = FALLBACK_IMAGE; }}
@@ -199,18 +206,25 @@ export const Home = () => {
         </div>
       )}
 
-      {/* SEPARATE ITEM DETAILS PAGE OVERLAY */}
+      {/* OVERLAYS */}
       {selectedItem && (
         <ItemDetails 
           item={selectedItem} 
           onBack={() => setSelectedItem(null)} 
         />
       )}
+
+      {selectedRestaurant && (
+        <RestaurantPage 
+          restaurant={selectedRestaurant} 
+          onBack={() => setSelectedRestaurant(null)} 
+        />
+      )}
     </div>
   );
 };
 
-// --- SUB COMPONENTS ---
+// --- SUB COMPONENTS (KEEPING ORIGINAL) ---
 
 const MenuGrid = ({ title, items, icon, onItemClick }: any) => {
   if (!items || items.length === 0) return null;
@@ -232,7 +246,7 @@ const MenuGrid = ({ title, items, icon, onItemClick }: any) => {
             {pageItems.map((item: any) => (
               <div 
                 key={item.id} 
-                onClick={() => onItemClick(item)} // NEW: Tapping triggers selection
+                onClick={() => onItemClick(item)} 
                 className="flex flex-col group cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-sm">
@@ -256,7 +270,6 @@ const MenuGrid = ({ title, items, icon, onItemClick }: any) => {
   );
 };
 
-// ... (MainAdCarousel and InlineAd remain exactly same)
 const MainAdCarousel = ({ ads }: any) => {
   const [index, setIndex] = useState(0);
   useEffect(() => {
