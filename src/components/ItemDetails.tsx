@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronLeft, ShoppingCart, Star, Clock, ShieldCheck } from 'lucide-react';
+// Added Percent to the imports here
+import { ChevronLeft, ShoppingCart, Star, Clock, ShieldCheck, Percent } from 'lucide-react';
 
 interface ItemDetailsProps {
   item: any;
@@ -36,6 +37,7 @@ export const ItemDetails = ({ item, onBack }: ItemDetailsProps) => {
           <div className="max-w-[70%]">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">
+                {/* Optional chaining added here for safety */}
                 {item.restaurants?.name || 'Exclusive'}
               </span>
               {item.restaurants?.is_verified && (
@@ -82,7 +84,7 @@ export const ItemDetails = ({ item, onBack }: ItemDetailsProps) => {
         <div className="space-y-4 mb-10">
           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">About this dish</h4>
           <p className="text-sm text-slate-600 leading-relaxed font-medium">
-            {item.description || "Crafted with premium ingredients, this signature dish brings a balance of textures and flavors. Perfect for a hearty meal that doesn't compromise on quality."}
+            {item.description || "Crafted with premium ingredients, this signature dish brings a balance of textures and flavors."}
           </p>
         </div>
 
