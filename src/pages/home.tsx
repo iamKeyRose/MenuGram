@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useTelegram } from '../hooks/useTelegram';
 import { ArrowRight, Star, Trophy, Percent, Rocket, LayoutGrid, MapPin, Search, Filter, X } from 'lucide-react';
 import { ItemDetails } from '../components/ItemDetails';
+import { RestaurantPage } from '../components/RestaurantPage';
 
 // Global Placeholders for empty/broken data
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500&auto=format&fit=crop";
