@@ -9,6 +9,7 @@ import { BottomNav } from './components/bottomNav';
 import { useAuth } from './hooks/useAuth';
 import { OwnerDashboard } from './pages/OwnerDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { PromoterDashboard } from './pages/PromoterDashboard';
 
 function App() {
   const { dbUser, loading } = useAuth();
@@ -37,6 +38,14 @@ function App() {
       case 'orders': return <Orders />;
       case 'profile': return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
       
+      // --- NEW AD PARTNER CONSOLE LOGIC ---
+      case 'ad-partner-console':
+        if (dbUser?.role !== 'promoter') {
+          setActiveTab('profile');
+          return <Profile dbUser={dbUser} setActiveTab={setActiveTab} />;
+        }
+        return <PromoterDashboard dbUser={dbUser} setActiveTab={setActiveTab} />;
+
       case 'system-admin':
         if (dbUser?.role !== 'admin') {
           setActiveTab('profile');
@@ -61,12 +70,21 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans selection:bg-blue-100">
-      <main className={`${activeTab === 'system-admin' ? '' : 'pb-32'}`}>
+      {/* Conditional Padding: 
+          Removed bottom padding for Admin and Promoter consoles 
+          to allow the full-screen sidebar to work correctly.
+      */}
+      <main className={`${(activeTab === 'system-admin' || activeTab === 'ad-partner-console') ? '' : 'pb-32'}`}>
         {renderPage()}
       </main>
 
-      {activeTab !== 'system-admin' && activeTab !== 'menu-setup' && (
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Hide BottomNav for Professional consoles (Admin/Promoter/Setup) 
+          so they use their own sidebars instead.
+      */}
+      {activeTab !== 'system-admin' && 
+       activeTab !== 'ad-partner-console' && 
+       activeTab !== 'menu-setup' && (
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} dbUser={dbUser} />
       )}
     </div>
   );
