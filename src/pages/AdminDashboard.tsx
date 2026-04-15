@@ -3,10 +3,9 @@ import { supabase } from '../lib/supabase';
 import { 
   Users, Store, ShoppingBag, Wallet, 
   BarChart3, AlertCircle, ShieldCheck, TrendingUp,
-  CheckCircle, Clock, Search, MessageSquare, ChevronLeft
+  Clock, Search, MessageSquare, ChevronLeft
 } from 'lucide-react';
 
-// Added setActiveTab prop to allow returning to Profile/Home
 export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) => void }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -24,13 +23,7 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
 
   const fetchGlobalStats = async () => {
     try {
-      const [
-        { count: userCount },
-        { count: resCount },
-        { data: transData },
-        { count: pendingPayouts },
-        { count: unverified }
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         supabase.from('app_users').select('*', { count: 'exact', head: true }),
         supabase.from('restaurants').select('*', { count: 'exact', head: true }),
         supabase.from('transactions').select('amount').gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
@@ -38,13 +31,15 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
         supabase.from('restaurants').select('*', { count: 'exact', head: true }).eq('is_verified', false)
       ]);
 
+      const getValue = (res: any) => res.status === 'fulfilled' ? res.value : { count: 0, data: [] };
+
       setStats({
-        users: userCount || 0,
-        restaurants: resCount || 0,
-        pendingPayouts: pendingPayouts || 0,
-        dailyRevenue: transData?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0,
+        users: getValue(results[0]).count || 0,
+        restaurants: getValue(results[1]).count || 0,
+        pendingPayouts: getValue(results[3]).count || 0,
+        dailyRevenue: getValue(results[2]).data?.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0) || 0,
         activeOrders: 0,
-        unverifiedVendors: unverified || 0
+        unverifiedVendors: getValue(results[4]).count || 0
       });
     } catch (error) {
       console.error("Admin Load Error:", error);
@@ -64,8 +59,6 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex text-slate-900 font-sans">
-      
-      {/* --- SIDEBAR --- */}
       <aside className="w-72 bg-white border-r border-slate-200 p-8 flex flex-col hidden lg:flex sticky top-0 h-screen">
         <div className="mb-12">
           <div className="flex items-center gap-2 mb-1 text-slate-900">
@@ -85,33 +78,23 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
         </nav>
 
         {setActiveTab && (
-          <button 
-            onClick={() => setActiveTab('profile')}
-            className="mt-6 flex items-center gap-2 text-slate-400 hover:text-slate-900 font-bold text-sm transition-colors"
-          >
+          <button onClick={() => setActiveTab('profile')} className="mt-6 flex items-center gap-2 text-slate-400 hover:text-slate-900 font-bold text-sm transition-colors">
             <ChevronLeft size={16} /> Exit Admin
           </button>
         )}
       </aside>
 
-      {/* --- MAIN STAGE --- */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        
-        {/* Header */}
         <div className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 mb-1">System Overview</h2>
             <p className="text-slate-500 font-medium">Aggregated platform intelligence</p>
           </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-white border border-slate-200 px-4 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
-          >
+          <button onClick={() => window.location.reload()} className="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3">
              <Clock size={14} /> Refresh
           </button>
         </div>
 
-        {/* KPI CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
            <KPICard title="Daily Revenue" value={`${stats.dailyRevenue} AED`} trend="+12%" icon={<TrendingUp size={24}/>} color="text-emerald-600" bg="bg-emerald-50" />
            <KPICard title="Total Users" value={stats.users} trend="+54" icon={<Users size={24}/>} color="text-blue-600" bg="bg-blue-50" />
@@ -120,8 +103,6 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          
-          {/* VERIFICATION QUEUE */}
           <div className="xl:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-8 border-b border-slate-50 flex justify-between items-center">
                 <h3 className="font-black text-lg tracking-tight uppercase italic text-slate-800">Verification Queue</h3>
@@ -150,7 +131,6 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
              </div>
           </div>
 
-          {/* SEARCH TRENDS */}
           <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
              <h3 className="font-black text-lg mb-6 flex items-center gap-2 text-slate-800">
                 <Search size={18} className="text-slate-400" /> Market Demand
@@ -160,18 +140,12 @@ export const AdminDashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) 
                 <TrendItem label="Vegan Options" count={281} percentage={60} />
                 <TrendItem label="Fast Delivery" count={198} percentage={40} />
              </div>
-             <button className="w-full mt-10 py-4 border-2 border-dashed border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 uppercase hover:border-blue-400 hover:text-blue-500 transition-all">
-                Full Analytics Report
-             </button>
           </div>
-
         </div>
       </main>
     </div>
   );
 };
-
-/* --- MINI COMPONENTS --- */
 
 const AdminLink = ({ icon, label, active = false, badge = 0 }: any) => (
   <div className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
@@ -186,9 +160,7 @@ const AdminLink = ({ icon, label, active = false, badge = 0 }: any) => (
 const KPICard = ({ title, value, icon, color, bg, trend }: any) => (
   <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
     <div className="flex justify-between items-start mb-4">
-      <div className={`p-4 rounded-2xl ${bg} ${color}`}>
-        {icon}
-      </div>
+      <div className={`p-4 rounded-2xl ${bg} ${color}`}>{icon}</div>
       <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${trend.includes('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
         {trend}
       </span>
