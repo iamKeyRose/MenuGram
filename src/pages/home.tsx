@@ -212,6 +212,11 @@ export const Home = () => {
           restaurant={selectedRestaurant} 
           onBack={() => setSelectedRestaurant(null)} 
           onItemClick={(item) => setSelectedItem(item)} 
+          // NEW FEATURE FUNCTION: Closes overlay and switches view
+          onViewAll={() => {
+            setSelectedRestaurant(null);
+            setView('categories');
+          }}
         />
       )}
 
@@ -225,7 +230,7 @@ export const Home = () => {
   );
 };
 
-// --- SUB COMPONENTS (KEEPING ORIGINAL) ---
+// --- SUB COMPONENTS (RESTORED ORIGINAL) ---
 
 const MenuGrid = ({ title, items, icon, onItemClick }: any) => {
   if (!items || items.length === 0) return null;
