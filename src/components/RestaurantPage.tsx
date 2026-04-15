@@ -5,11 +5,12 @@ import { ChevronLeft, MapPin, Star, ShieldCheck, Clock, Percent, Rocket } from '
 interface RestaurantPageProps {
   restaurant: any;
   onBack: () => void;
+  onItemClick: (item: any) => void; // Added this prop
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop";
 
-export const RestaurantPage = ({ restaurant, onBack }: RestaurantPageProps) => {
+export const RestaurantPage = ({ restaurant, onBack, onItemClick }: RestaurantPageProps) => {
   const [menuData, setMenuData] = useState<Record<string, any[]>>({});
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,10 @@ export const RestaurantPage = ({ restaurant, onBack }: RestaurantPageProps) => {
         const [catsRes, itemsRes] = await Promise.all([
           supabase.from('menu_categories').select('*').order('display_order'),
           supabase.from('menu_items')
-            .select('*')
+            .select(`
+              *,
+              restaurants (name, is_verified, city, logo_url)
+            `) // Added restaurant details so ItemDetails works from here too
             .eq('restaurant_id', restaurant.id)
         ]);
 
@@ -38,7 +42,7 @@ export const RestaurantPage = ({ restaurant, onBack }: RestaurantPageProps) => {
           }
         });
 
-        setCategories(cats.filter(c => organized[c.id])); // Only keep categories that have items
+        setCategories(cats.filter(c => organized[c.id])); 
         setMenuData(organized);
       } catch (err) {
         console.error("Error fetching restaurant menu:", err);
@@ -58,13 +62,13 @@ export const RestaurantPage = ({ restaurant, onBack }: RestaurantPageProps) => {
       <div className="relative h-60 w-full">
         <img src={restaurant.logo_url || FALLBACK_IMAGE} className="w-full h-full object-cover" alt={restaurant.name} />
         <div className="absolute inset-0 bg-black/40" />
-        <button onClick={onBack} className="absolute top-6 left-6 p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl">
+        <button onClick={onBack} className="absolute top-6 left-6 p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl active:scale-90 transition-all">
           <ChevronLeft size={20} className="text-slate-900" />
         </button>
       </div>
 
       {/* RESTAURANT CONTENT */}
-      <div className="p-6 -mt-10 bg-[#FDFDFD] rounded-t-[40px] relative z-10">
+      <div className="p-6 -mt-10 bg-[#FDFDFD] rounded-t-[40px] relative z-10 shadow-[0_-20px_40px_rgba(0,0,0,0.05)]">
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -96,7 +100,11 @@ export const RestaurantPage = ({ restaurant, onBack }: RestaurantPageProps) => {
                   </h2>
                   <div className="grid grid-cols-2 gap-4">
                     {menuData[cat.id]?.map((item) => (
-                      <div key={item.id} className="bg-white border border-slate-100 p-3 rounded-2xl shadow-sm">
+                      <div 
+                        key={item.id} 
+                        onClick={() => onItemClick(item)} // NEW: Triggers the ItemDetails overlay
+                        className="bg-white border border-slate-100 p-3 rounded-2xl shadow-sm active:scale-95 transition-all cursor-pointer"
+                      >
                         <img src={item.image_url || FALLBACK_IMAGE} className="w-full aspect-square object-cover rounded-xl mb-2" />
                         <h3 className="text-[11px] font-black text-slate-800 truncate uppercase leading-tight">{item.name}</h3>
                         <p className="text-[10px] font-black text-blue-600 mt-1">{item.price} AED</p>
