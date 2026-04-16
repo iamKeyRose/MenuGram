@@ -1,304 +1,181 @@
-Here is the table: 
+import { supabase } from '../lib/supabase';
 
--- 0. CLEANUP (Ensures a fresh, error-free install)
-DROP INDEX IF EXISTS idx_orders_status, idx_orders_service, idx_ads_expiry, idx_menu_price, idx_res_city, idx_courier_active;
-DROP TABLE IF EXISTS audit_logs, app_settings, support_tickets, search_analytics, 
-                 reviews, notifications, favorites, user_addresses, promo_codes, 
-                 ads, payouts, wallets, transactions, order_items, orders, 
-                 couriers, menu_item_values, menu_item_options, menu_items, 
-                 menu_categories, delivery_zones, operating_hours, restaurants, 
-                 app_users CASCADE;
+/**
+ * MASTER TYPES
+ */
+export type ServiceType = 'dine_in' | 'takeaway' | 'delivery';
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+export const SupabaseService = {
+  
+  // --- 1. USERS & AUTH ---
+  users: {
+    async getProfile(telegramId: number) {
+      return await supabase.from('app_users').select('*').eq('telegram_id', telegramId).single();
+    },
+    async updateProfile(userId: string, updates: any) {
+      return await supabase.from('app_users').update(updates).eq('id', userId);
+    },
+    async getAddresses(userId: string) {
+      return await supabase.from('user_addresses').select('*').eq('user_id', userId);
+    }
+  },
 
--- 1. app_users
-CREATE TABLE app_users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  auth_id uuid UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
-  telegram_id bigint UNIQUE,
-  display_name text NOT NULL,
-  username text,
-  role text DEFAULT 'customer' CHECK (role IN ('customer', 'owner', 'admin', 'promoter', 'courier')),
-  loyalty_points integer DEFAULT 0,
-  referred_by_id uuid REFERENCES app_users(id) ON DELETE SET NULL,
-  promoter_commission_rate numeric(5, 2) DEFAULT 0.00,
-  avatar_url text,
-  language text DEFAULT 'en',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+  // --- 2. RESTAURANTS & OPERATING HOURS ---
+  restaurants: {
+    async getAll(city?: string) {
+      let query = supabase.from('restaurants').select(`
+        *,
+        operating_hours (*),
+        delivery_zones (*)
+      `);
+      if (city) query = query.eq('city', city);
+      return await query;
+    },
+    async getFullMenu(restaurantId: string) {
+      return await supabase.from('menu_items').select(`
+        *,
+        menu_item_options (
+          *,
+          menu_item_values (*)
+        )
+      `).eq('restaurant_id', restaurantId);
+    },
+    async getCategories() {
+      return await supabase.from('menu_categories').select('*').order('display_order');
+    }
+  },
 
--- 2. restaurants
-CREATE TABLE restaurants (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  name text NOT NULL,
-  description text DEFAULT '',
-  logo_url text,
-  cover_url text,
-  address text,
-  city text,
-  latitude numeric(10, 7),
-  longitude numeric(10, 7),
-  phone text,
-  whatsapp text,
-  is_open boolean DEFAULT true,
-  is_verified boolean DEFAULT false,
-  rating numeric(3, 2) DEFAULT 0,
-  review_count integer DEFAULT 0,
-  subscription_tier text DEFAULT 'basic' CHECK (subscription_tier IN ('basic', 'professional', 'advanced', 'premium')),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+  // --- 3. ORDERS & REAL-TIME STATUS ---
+  orders: {
+    async placeOrder(orderData: any, items: any[]) {
+      // Create main order
+      const { data: order, error: orderErr } = await supabase
+        .from('orders').insert([orderData]).select().single();
 
--- 3. operating_hours (THE RECOVERED TABLE)
-CREATE TABLE operating_hours (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  day_of_week integer CHECK (day_of_week BETWEEN 0 AND 6),
-  open_time time NOT NULL,
-  close_time time NOT NULL,
-  is_closed_all_day boolean DEFAULT false,
-  UNIQUE(restaurant_id, day_of_week)
-);
+      if (orderErr) throw orderErr;
 
--- 4. delivery_zones
-CREATE TABLE delivery_zones (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  area_name text NOT NULL,
-  delivery_fee numeric(10, 2) DEFAULT 0,
-  min_order_amount numeric(10, 2) DEFAULT 0,
-  estimated_time text DEFAULT '30-45 mins'
-);
+      // Prepare items for batch insert
+      const preparedItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        selected_options: item.options // jsonb
+      }));
 
--- 5. menu_categories
-CREATE TABLE menu_categories (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  slug text UNIQUE NOT NULL,
-  icon text,
-  category_type text DEFAULT 'food_type' CHECK (category_type IN ('food_type', 'meal_type', 'dietary', 'special')),
-  display_order integer DEFAULT 0
-);
+      const { error: itemsErr } = await supabase.from('order_items').insert(preparedItems);
+      if (itemsErr) throw itemsErr;
 
--- 6. menu_items
-CREATE TABLE menu_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  category_id uuid REFERENCES menu_categories(id) ON DELETE SET NULL,
-  name text NOT NULL,
-  description text DEFAULT '',
-  price numeric(10, 2) NOT NULL,
-  image_url text,
-  is_available boolean DEFAULT true,
-  is_fasting_compatible boolean DEFAULT false,
-  is_todays_special boolean DEFAULT false,
-  is_on_sale boolean DEFAULT false,
-  sale_price numeric(10, 2),
-  created_at timestamptz DEFAULT now()
-);
+      // TRIGGER LOYALTY: 10 points per item
+      await SupabaseService.loyalty.awardOrderPoints(orderData.user_id, items.length);
 
--- 7. menu_item_options
-CREATE TABLE menu_item_options (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  menu_item_id uuid REFERENCES menu_items(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  is_required boolean DEFAULT false,
-  min_select integer DEFAULT 0,
-  max_select integer DEFAULT 1
-);
+      // TRIGGER COMMISSION: If promoter exists
+      if (orderData.promoter_id) {
+        await SupabaseService.finance.processCommission(order.id, orderData.promoter_id, orderData.total);
+      }
 
--- 8. menu_item_values
-CREATE TABLE menu_item_values (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  option_id uuid REFERENCES menu_item_options(id) ON DELETE CASCADE,
-  value_name text NOT NULL,
-  additional_price numeric(10, 2) DEFAULT 0
-);
+      return order;
+    },
+    async getHistory(userId: string) {
+      return await supabase
+        .from('orders')
+        .select(`*, restaurants(name, logo_url), order_items(*)`)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+    }
+  },
 
--- 9. couriers
-CREATE TABLE couriers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  vehicle_type text CHECK (vehicle_type IN ('bike', 'car', 'scooter')),
-  license_plate text,
-  is_active boolean DEFAULT false,
-  current_latitude numeric(10, 7),
-  current_longitude numeric(10, 7),
-  last_location_update timestamptz
-);
+  // --- 4. LOYALTY SYSTEM (Integrated) ---
+  loyalty: {
+    async awardPoints(userId: string, amount: number, reason: string) {
+      await supabase.rpc('increment_loyalty', { user_id: userId, amount: amount });
+      return await supabase.from('audit_logs').insert([{
+        actor_id: userId,
+        action: `LOYALTY_EARNED: ${reason}`,
+        entity_type: 'loyalty_points',
+        entity_id: userId
+      }]);
+    },
+    async awardOrderPoints(userId: string, itemCount: number) {
+      return this.awardPoints(userId, itemCount * 10, `Ordered ${itemCount} items`);
+    },
+    async handleShare(userId: string) {
+      return this.awardPoints(userId, 100, "App Shared");
+    }
+  },
 
--- 10. orders
-CREATE TABLE orders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  courier_id uuid REFERENCES couriers(id) ON DELETE SET NULL,
-  promoter_id uuid REFERENCES app_users(id) ON DELETE SET NULL,
-  service_type text NOT NULL CHECK (service_type IN ('dine_in', 'takeaway', 'delivery')),
-  table_number text, 
-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled')),
-  total numeric(10, 2) NOT NULL,
-  delivery_fee numeric(10, 2) DEFAULT 0,
-  notes text,
-  created_at timestamptz DEFAULT now()
-);
+  // --- 5. FINANCE & WALLET ---
+  finance: {
+    async processCommission(orderId: string, promoterId: string, total: number) {
+      const { data: user } = await supabase.from('app_users').select('promoter_commission_rate').eq('id', promoterId).single();
+      const rate = user?.promoter_commission_rate || 0;
+      const commission = (total * rate) / 100;
 
--- 11. order_items
-CREATE TABLE order_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id uuid REFERENCES orders(id) ON DELETE CASCADE,
-  menu_item_id uuid REFERENCES menu_items(id) ON DELETE CASCADE,
-  quantity integer NOT NULL DEFAULT 1,
-  unit_price numeric(10, 2) NOT NULL,
-  selected_options jsonb DEFAULT '[]'
-);
+      if (commission > 0) {
+        await supabase.rpc('increment_wallet_balance', { user_id: promoterId, amount: commission });
+        await supabase.from('transactions').insert([{ order_id: orderId, amount: commission, status: 'success' }]);
+      }
+    },
+    async getWallet(userId: string) {
+      return await supabase.from('wallets').select('*').eq('owner_id', userId).single();
+    }
+  },
 
--- 12. transactions
-CREATE TABLE transactions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id uuid REFERENCES orders(id),
-  amount numeric(10, 2) NOT NULL,
-  currency text DEFAULT 'Stars',
-  platform_fee numeric(10, 2) DEFAULT 0,
-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'refunded')),
-  created_at timestamptz DEFAULT now()
-);
+  // --- 6. MARKETING & ADS ---
+  marketing: {
+    async getAds(placement: string = 'home_screen') {
+      return await supabase.from('ads')
+        .select('*')
+        .eq('is_active', true)
+        .eq('placement', placement)
+        .gt('ends_at', new Date().toISOString());
+    },
+    async trackAdClick(adId: string) {
+      return await supabase.rpc('increment_ad_click', { ad_id: adId });
+    },
+    async validatePromo(code: string) {
+      return await supabase.from('promo_codes').select('*').eq('code', code).eq('is_active', true).single();
+    }
+  },
 
--- 13. wallets
-CREATE TABLE wallets (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  balance numeric(10, 2) DEFAULT 0,
-  currency text DEFAULT 'AED',
-  updated_at timestamptz DEFAULT now()
-);
+  // --- 7. DISCOVERY & ANALYTICS ---
+  discovery: {
+    async logSearch(userId: string, query: string, count: number) {
+      return await supabase.from('search_analytics').insert([{ user_id: userId, query, results_count: count }]);
+    },
+    async toggleFavorite(userId: string, restaurantId: string, isFavorite: boolean) {
+      if (isFavorite) {
+        return await supabase.from('favorites').insert([{ user_id: userId, restaurant_id: restaurantId }]);
+      } else {
+        return await supabase.from('favorites').delete().match({ user_id: userId, restaurant_id: restaurantId });
+      }
+    }
+  },
 
--- 14. payouts
-CREATE TABLE payouts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  wallet_id uuid REFERENCES wallets(id) ON DELETE CASCADE,
-  amount numeric(10, 2) NOT NULL,
-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'rejected')),
-  method text NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
+  // --- 8. SUPPORT & REVIEWS ---
+  support: {
+    async submitReview(restaurantId: string, userId: string, rating: number, comment: string) {
+      const { error } = await supabase.from('reviews').insert([{
+        restaurant_id: restaurantId,
+        user_id: userId,
+        rating,
+        comment
+      }]);
 
--- 15. ads
-CREATE TABLE ads (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  created_by uuid REFERENCES app_users(id),
-  tier text DEFAULT 'basic',
-  ad_type text DEFAULT 'banner',
-  placement text DEFAULT 'home_screen',
-  title text NOT NULL,
-  image_url text,
-  is_active boolean DEFAULT true,
-  starts_at timestamptz DEFAULT now(),
-  ends_at timestamptz NOT NULL,
-  impressions_count integer DEFAULT 0,
-  clicks_count integer DEFAULT 0,
-  created_at timestamptz DEFAULT now()
-);
-
--- 16. promo_codes
-CREATE TABLE promo_codes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code text UNIQUE NOT NULL,
-  discount_type text,
-  discount_value numeric(10, 2) NOT NULL,
-  is_active boolean DEFAULT true,
-  ends_at timestamptz
-);
-
--- 17. user_addresses
-CREATE TABLE user_addresses (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  label text DEFAULT 'Home',
-  address_line text NOT NULL,
-  is_default boolean DEFAULT false
-);
-
--- 18. favorites
-CREATE TABLE favorites (
-  user_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  PRIMARY KEY (user_id, restaurant_id)
-);
-
--- 19. notifications
-CREATE TABLE notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  message text NOT NULL,
-  type text,
-  is_read boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
-
--- 20. reviews
-CREATE TABLE reviews (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id),
-  restaurant_id uuid REFERENCES restaurants(id),
-  rating integer CHECK (rating BETWEEN 1 AND 5),
-  comment text,
-  created_at timestamptz DEFAULT now()
-);
-
--- 21. search_analytics
-CREATE TABLE search_analytics (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id),
-  query text NOT NULL,
-  results_count integer,
-  created_at timestamptz DEFAULT now()
-);
-
--- 22. support_tickets
-CREATE TABLE support_tickets (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES app_users(id),
-  order_id uuid REFERENCES orders(id),
-  subject text NOT NULL,
-  status text DEFAULT 'open',
-  created_at timestamptz DEFAULT now()
-);
-
--- 23. app_settings
-CREATE TABLE app_settings (
-  key text PRIMARY KEY,
-  value jsonb,
-  updated_at timestamptz DEFAULT now()
-);
-
--- 24. audit_logs
-CREATE TABLE audit_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  actor_id uuid REFERENCES app_users(id),
-  action text NOT NULL,
-  entity_type text,
-  entity_id uuid,
-  created_at timestamptz DEFAULT now()
-);
-
--- 25. media_assets (Bonus/Final)
-CREATE TABLE media_assets (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid REFERENCES restaurants(id) ON DELETE CASCADE,
-  file_url text NOT NULL,
-  file_type text,
-  created_at timestamptz DEFAULT now()
-);
-
--- PERFORMANCE INDEXES
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_service ON orders(service_type);
-CREATE INDEX idx_ads_expiry ON ads(ends_at) WHERE is_active = true;
-CREATE INDEX idx_menu_price ON menu_items(price);
-CREATE INDEX idx_res_city ON restaurants(city);
-CREATE INDEX idx_courier_active ON couriers(is_active) WHERE is_active = true;
+      if (!error) {
+        // 25 points for rating, 100 total if they write a comment
+        const points = comment.trim().length > 0 ? 100 : 25;
+        await SupabaseService.loyalty.awardPoints(userId, points, "Review Submitted");
+      }
+    },
+    async createTicket(userId: string, subject: string, orderId?: string) {
+      return await supabase.from('support_tickets').insert([{
+        user_id: userId,
+        subject,
+        order_id: orderId,
+        status: 'open'
+      }]);
+    }
+  }
+};
