@@ -44,6 +44,7 @@ export const SupabaseService = {
   // --- 3. ORDERING SYSTEM ---
   orders: {
     async placeOrder(orderData: any, items: any[]) {
+      // 1. Insert the main order
       const { data: order, error: orderErr } = await supabase
         .from('orders')
         .insert([orderData])
@@ -52,6 +53,7 @@ export const SupabaseService = {
 
       if (orderErr) throw orderErr;
 
+      // 2. Insert order items
       const preparedItems = items.map(item => ({
         order_id: order.id,
         menu_item_id: item.id,
@@ -63,7 +65,7 @@ export const SupabaseService = {
       const { error: itemsErr } = await supabase.from('order_items').insert(preparedItems);
       if (itemsErr) throw itemsErr;
 
-      // Automatically award points: 10 per item
+      // 3. AUTOMATIC LOYALTY: Award 10 points per item
       await SupabaseService.loyalty.awardOrderPoints(orderData.user_id, items.length);
 
       return order;
@@ -84,12 +86,17 @@ export const SupabaseService = {
 
   // --- 4. LOYALTY SYSTEM ---
   loyalty: {
+    /**
+     * Core function to add points to a user and log to audit
+     */
     async awardPoints(userId: string, amount: number, reason: string) {
+      // 1. Update the user's total points via RPC
       const { data, error } = await supabase.rpc('increment_loyalty', { 
         user_id: userId, 
         amount: amount 
       });
 
+      // 2. Log the action in audit_logs for user history
       await supabase.from('audit_logs').insert([{
         actor_id: userId,
         action: `LOYALTY_EARNED: ${reason}`,
@@ -100,17 +107,23 @@ export const SupabaseService = {
       return { data, error };
     },
 
+    /**
+     * Triggered when a user shares the app (+100 points)
+     */
     async handleShare(userId: string) {
       return SupabaseService.loyalty.awardPoints(userId, 100, "App Shared");
     },
 
+    /**
+     * Logic to calculate points for an order (+10 per item)
+     */
     async awardOrderPoints(userId: string, itemCount: number) {
       const totalPoints = itemCount * 10;
       return SupabaseService.loyalty.awardPoints(userId, totalPoints, `Ordered ${itemCount} items`);
     }
   },
 
-  // --- 5. MARKETING & PROMO ---
+  // --- 5. MARKETING & ADS ---
   marketing: {
     async getActiveAds(placement: string = 'home_screen') {
       return await supabase
@@ -131,7 +144,7 @@ export const SupabaseService = {
     }
   },
 
-  // --- 6. WALLET & FINANCES ---
+  // --- 6. WALLET & TRANSACTIONS ---
   wallet: {
     async getBalance(userId: string) {
       return await supabase.from('wallets').select('*').eq('owner_id', userId).single();
@@ -146,7 +159,7 @@ export const SupabaseService = {
     }
   },
 
-  // --- 7. DISCOVERY & ANALYTICS ---
+  // --- 7. DISCOVERY & FAVORITES ---
   discovery: {
     async logSearch(userId: string, query: string, count: number) {
       return await supabase.from('search_analytics').insert([{
@@ -165,8 +178,12 @@ export const SupabaseService = {
     }
   },
 
-  // --- 8. SUPPORT & FEEDBACK ---
+  // --- 8. SUPPORT & REVIEWS ---
   support: {
+    /**
+     * Submits a review and awards loyalty points
+     * (25 for rating only, 100 if they leave a comment)
+     */
     async submitReview(restaurantId: string, userId: string, rating: number, comment: string) {
       const { data, error } = await supabase.from('reviews').insert([{
         restaurant_id: restaurantId,
@@ -176,8 +193,7 @@ export const SupabaseService = {
       }]);
 
       if (!error) {
-        // Award 25 for rating + 75 extra if there is a comment (Total 100)
-        const points = comment ? 100 : 25;
+        const points = comment.trim().length > 0 ? 100 : 25;
         await SupabaseService.loyalty.awardPoints(userId, points, "Reviewed Item");
       }
       
