@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 
 /**
  * UTILITY TYPES
- * Based on your SQL Schema
  */
 export type ServiceType = 'dine_in' | 'takeaway' | 'delivery';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
@@ -42,13 +41,9 @@ export const SupabaseService = {
     }
   },
 
-  // --- 3. ORDERING SYSTEM (Complex CRUD) ---
+  // --- 3. ORDERING SYSTEM ---
   orders: {
-    /**
-     * Creates an order and its items in a single logical flow
-     */
     async placeOrder(orderData: any, items: any[]) {
-      // 1. Insert the main order
       const { data: order, error: orderErr } = await supabase
         .from('orders')
         .insert([orderData])
@@ -57,17 +52,19 @@ export const SupabaseService = {
 
       if (orderErr) throw orderErr;
 
-      // 2. Insert order items
       const preparedItems = items.map(item => ({
         order_id: order.id,
         menu_item_id: item.id,
         quantity: item.quantity,
         unit_price: item.price,
-        selected_options: item.options // jsonb field
+        selected_options: item.options 
       }));
 
       const { error: itemsErr } = await supabase.from('order_items').insert(preparedItems);
       if (itemsErr) throw itemsErr;
+
+      // Automatically award points: 10 per item
+      await SupabaseService.loyalty.awardOrderPoints(orderData.user_id, items.length);
 
       return order;
     },
@@ -85,7 +82,35 @@ export const SupabaseService = {
     }
   },
 
-  // --- 4. ADVERTISING & PROMO ---
+  // --- 4. LOYALTY SYSTEM ---
+  loyalty: {
+    async awardPoints(userId: string, amount: number, reason: string) {
+      const { data, error } = await supabase.rpc('increment_loyalty', { 
+        user_id: userId, 
+        amount: amount 
+      });
+
+      await supabase.from('audit_logs').insert([{
+        actor_id: userId,
+        action: `LOYALTY_EARNED: ${reason}`,
+        entity_type: 'loyalty_points',
+        entity_id: userId
+      }]);
+
+      return { data, error };
+    },
+
+    async handleShare(userId: string) {
+      return SupabaseService.loyalty.awardPoints(userId, 100, "App Shared");
+    },
+
+    async awardOrderPoints(userId: string, itemCount: number) {
+      const totalPoints = itemCount * 10;
+      return SupabaseService.loyalty.awardPoints(userId, totalPoints, `Ordered ${itemCount} items`);
+    }
+  },
+
+  // --- 5. MARKETING & PROMO ---
   marketing: {
     async getActiveAds(placement: string = 'home_screen') {
       return await supabase
@@ -106,22 +131,22 @@ export const SupabaseService = {
     }
   },
 
-  // --- 5. WALLET & FINANCES ---
+  // --- 6. WALLET & FINANCES ---
   wallet: {
     async getBalance(userId: string) {
       return await supabase.from('wallets').select('*').eq('owner_id', userId).single();
     },
     
-    async createTransaction(orderId: string, amount: number) {
+    async createTransaction(order_id: string, amount: number) {
       return await supabase.from('transactions').insert([{
-        order_id: orderId,
+        order_id,
         amount,
         status: 'success'
       }]);
     }
   },
 
-  // --- 6. DISCOVERY & ANALYTICS ---
+  // --- 7. DISCOVERY & ANALYTICS ---
   discovery: {
     async logSearch(userId: string, query: string, count: number) {
       return await supabase.from('search_analytics').insert([{
@@ -140,15 +165,23 @@ export const SupabaseService = {
     }
   },
 
-  // --- 7. SUPPORT & FEEDBACK ---
+  // --- 8. SUPPORT & FEEDBACK ---
   support: {
     async submitReview(restaurantId: string, userId: string, rating: number, comment: string) {
-      return await supabase.from('reviews').insert([{
+      const { data, error } = await supabase.from('reviews').insert([{
         restaurant_id: restaurantId,
         user_id: userId,
         rating,
         comment
       }]);
+
+      if (!error) {
+        // Award 25 for rating + 75 extra if there is a comment (Total 100)
+        const points = comment ? 100 : 25;
+        await SupabaseService.loyalty.awardPoints(userId, points, "Reviewed Item");
+      }
+      
+      return { data, error };
     },
     
     async createTicket(userId: string, subject: string, orderId?: string) {
