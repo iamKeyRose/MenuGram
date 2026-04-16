@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 /**
  * UTILITY TYPES
- * Based on your SQL Schema
+ * Based on your SQL Schema ..
  */
 export type ServiceType = 'dine_in' | 'takeaway' | 'delivery';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
